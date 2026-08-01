@@ -4,10 +4,14 @@ project(runner LANGUAGES CXX)
 
 # The name of the executable created for the application. Change this to change
 # the on-disk name of your application.
-set(BINARY_NAME "bully_client")
+set(BINARY_NAME "Bully")
 # The unique GTK application identifier for this application. See:
 # https://wiki.gnome.org/HowDoI/ChooseApplicationID
 set(APPLICATION_ID "com.example.bully_client")
+
+# NOTE: APPLICATION_ID is a reverse-DNS identifier, not a display name —
+# left as-is; BINARY_NAME above and the window title in
+# linux/runner/my_application.cc are what actually show/read as "Bully".
 
 # Explicitly opt in to modern CMake behaviors to avoid warnings with recent
 # versions of CMake.

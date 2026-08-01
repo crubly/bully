@@ -28,7 +28,7 @@ jobs:
         run: |
           cd build/macos/Build/Products/Release
           mkdir -p dmg_root
-          cp -r bully_client.app dmg_root/
+          cp -r Bully.app dmg_root/
           ln -s /Applications dmg_root/Applications
           hdiutil create -volname "Bully" -srcfolder dmg_root -ov -format UDZO bully-unsigned.dmg
 
