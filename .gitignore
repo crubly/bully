@@ -28,6 +28,11 @@ client/**/GeneratedPluginRegistrant.*
 .env
 *.env.local
 
+# Stray Hive local storage (should only ever live under app support dirs,
+# not the repo root — these appear if Hive ever runs without an explicit path)
+*.hive
+*.lock
+
 # OS
 .DS_Store
 
