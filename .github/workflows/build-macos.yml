@@ -1,0 +1,38 @@
+name: Build unsigned macOS DMG
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'client/**'
+
+jobs:
+  build:
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - run: flutter pub get
+
+      - run: flutter build macos --release
+
+      - name: Package DMG
+        run: |
+          cd build/macos/Build/Products/Release
+          mkdir -p dmg_root
+          cp -r bully_client.app dmg_root/
+          ln -s /Applications dmg_root/Applications
+          hdiutil create -volname "Bully" -srcfolder dmg_root -ov -format UDZO bully-unsigned.dmg
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bully-unsigned-dmg
+          path: client/build/macos/Build/Products/Release/bully-unsigned.dmg
