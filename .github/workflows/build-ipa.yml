@@ -1,0 +1,37 @@
+name: Build unsigned IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'client/**'
+
+jobs:
+  build:
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - run: flutter pub get
+
+      - run: flutter build ipa --no-codesign
+
+      - name: Package unsigned IPA
+        run: |
+          cd build/ios/archive
+          mkdir -p Payload
+          cp -r Runner.xcarchive/Products/Applications/Runner.app Payload/
+          zip -r bully-unsigned.ipa Payload
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bully-unsigned-ipa
+          path: client/build/ios/archive/bully-unsigned.ipa
