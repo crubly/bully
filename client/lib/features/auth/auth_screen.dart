@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import '../../core/app_services.dart';
 import '../../core/storage/secure_store.dart';
 import '../shell/app_shell.dart';
-import '../../theme/discord_theme.dart';
+import '../../theme/bully_theme.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -58,7 +58,7 @@ class _AuthScreenState extends State<AuthScreen> {
               children: [
                 Text(
                   _isRegister ? 'Создать аккаунт' : 'С возвращением!',
-                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: DiscordColors.textNormal),
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: BullyPalette.of(context).textNormal),
                 ),
                 const SizedBox(height: 24),
                 TextField(
@@ -73,7 +73,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 ),
                 if (_error != null) ...[
                   const SizedBox(height: 12),
-                  Text(_error!, style: const TextStyle(color: DiscordColors.danger)),
+                  Text(_error!, style: const TextStyle(color: BullyColors.danger)),
                 ],
                 const SizedBox(height: 20),
                 SizedBox(

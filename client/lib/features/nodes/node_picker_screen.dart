@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/network/api_client.dart';
 import '../../core/node_store.dart';
-import '../../theme/discord_theme.dart';
+import '../../theme/bully_theme.dart';
 
 class NodePickerScreen extends StatefulWidget {
   final void Function(BullyNode node) onNodeReady;
@@ -53,7 +53,7 @@ class _NodePickerScreenState extends State<NodePickerScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: DiscordColors.bgPrimary,
+      backgroundColor: BullyPalette.of(context).bgPrimary,
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 420),
@@ -62,11 +62,11 @@ class _NodePickerScreenState extends State<NodePickerScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text('Подключение к ноде', style: TextStyle(color: DiscordColors.textNormal, fontSize: 22, fontWeight: FontWeight.bold)),
+                Text('Подключение к ноде', style: TextStyle(color: BullyPalette.of(context).textNormal, fontSize: 22, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
-                const Text(
+                Text(
                   'Bully не хостит общий сервер — укажите адрес ноды, к которой хотите подключиться.',
-                  style: TextStyle(color: DiscordColors.textMuted),
+                  style: TextStyle(color: BullyPalette.of(context).textMuted),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 20),
@@ -77,7 +77,7 @@ class _NodePickerScreenState extends State<NodePickerScreen> {
                 ),
                 if (_error != null) ...[
                   const SizedBox(height: 8),
-                  Text(_error!, style: const TextStyle(color: DiscordColors.danger)),
+                  Text(_error!, style: const TextStyle(color: BullyColors.danger)),
                 ],
                 const SizedBox(height: 16),
                 SizedBox(
@@ -89,11 +89,11 @@ class _NodePickerScreenState extends State<NodePickerScreen> {
                 ),
                 if (_known.isNotEmpty) ...[
                   const SizedBox(height: 24),
-                  const Align(alignment: Alignment.centerLeft, child: Text('Известные ноды:', style: TextStyle(color: DiscordColors.textMuted))),
+                  Align(alignment: Alignment.centerLeft, child: Text('Известные ноды:', style: TextStyle(color: BullyPalette.of(context).textMuted))),
                   ..._known.map((n) => ListTile(
-                        leading: const Icon(Icons.dns, color: DiscordColors.blurple),
-                        title: Text(n.name, style: const TextStyle(color: DiscordColors.textNormal)),
-                        subtitle: Text(n.url, style: const TextStyle(color: DiscordColors.textMuted)),
+                        leading: const Icon(Icons.dns, color: BullyColors.blurple),
+                        title: Text(n.name, style: TextStyle(color: BullyPalette.of(context).textNormal)),
+                        subtitle: Text(n.url, style: TextStyle(color: BullyPalette.of(context).textMuted)),
                         onTap: () {
                           _urlController.text = n.url;
                           _check();

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../theme/discord_theme.dart';
+import '../../theme/bully_theme.dart';
 
 Future<String?> showSetPassphraseDialog(BuildContext context, {required String otherPartyLabel}) {
   final controller = TextEditingController();
@@ -11,8 +11,8 @@ Future<String?> showSetPassphraseDialog(BuildContext context, {required String o
     context: context,
     barrierDismissible: false,
     builder: (context) => AlertDialog(
-      backgroundColor: DiscordColors.bgSecondary,
-      title: const Text('Пароль шифрования чата', style: TextStyle(color: DiscordColors.textNormal)),
+      backgroundColor: BullyPalette.of(context).bgSecondary,
+      title: Text('Пароль шифрования чата', style: TextStyle(color: BullyPalette.of(context).textNormal)),
       content: Form(
         key: formKey,
         child: Column(
@@ -23,7 +23,7 @@ Future<String?> showSetPassphraseDialog(BuildContext context, {required String o
               'Придумайте пароль и сообщите его собеседнику ($otherPartyLabel) любым другим способом '
               '(голосом, лично, в другом мессенджере). Сервер этот пароль никогда не увидит — '
               'им шифруется только ваша переписка на устройствах.',
-              style: const TextStyle(color: DiscordColors.textMuted, fontSize: 13),
+              style: TextStyle(color: BullyPalette.of(context).textMuted, fontSize: 13),
             ),
             const SizedBox(height: 16),
             TextFormField(

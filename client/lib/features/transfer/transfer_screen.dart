@@ -6,7 +6,7 @@ import '../../core/app_services.dart';
 import '../../core/device_info.dart';
 import '../../core/storage/secure_store.dart';
 import '../../core/transfer/device_transfer_service.dart';
-import '../../theme/discord_theme.dart';
+import '../../theme/bully_theme.dart';
 
 class TransferScreen extends StatefulWidget {
   const TransferScreen({super.key});
@@ -23,8 +23,8 @@ class _TransferScreenState extends State<TransferScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: DiscordColors.bgPrimary,
-      appBar: AppBar(backgroundColor: DiscordColors.bgPrimary, title: const Text('Перенос чатов')),
+      backgroundColor: BullyPalette.of(context).bgPrimary,
+      appBar: AppBar(backgroundColor: BullyPalette.of(context).bgPrimary, title: const Text('Перенос чатов')),
       body: switch (_mode) {
         _Mode.choose => _ChooseView(onHost: () => setState(() => _mode = _Mode.hosting), onJoin: () => setState(() => _mode = _Mode.joining)),
         _Mode.hosting => const _HostView(),
@@ -49,9 +49,9 @@ class _ChooseView extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
+              Text(
                 'Оба устройства должны быть в одной локальной сети и войти в один и тот же аккаунт.',
-                style: TextStyle(color: DiscordColors.textMuted),
+                style: TextStyle(color: BullyPalette.of(context).textMuted),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
@@ -120,21 +120,21 @@ class _HostViewState extends State<_HostView> {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (_done) ...[
-            const Icon(Icons.check_circle, color: DiscordColors.online, size: 48),
+            const Icon(Icons.check_circle, color: BullyColors.online, size: 48),
             const SizedBox(height: 12),
-            const Text('Перенос завершён', style: TextStyle(color: DiscordColors.textNormal, fontSize: 18)),
+            Text('Перенос завершён', style: TextStyle(color: BullyPalette.of(context).textNormal, fontSize: 18)),
           ] else ...[
-            const Text('Введите этот код на новом устройстве:', style: TextStyle(color: DiscordColors.textMuted)),
+            Text('Введите этот код на новом устройстве:', style: TextStyle(color: BullyPalette.of(context).textMuted)),
             const SizedBox(height: 16),
             SelectableText(
               _host!.code,
-              style: const TextStyle(color: DiscordColors.textNormal, fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: 2, fontFamily: 'monospace'),
+              style: TextStyle(color: BullyPalette.of(context).textNormal, fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: 2, fontFamily: 'monospace'),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
             const CircularProgressIndicator(),
             const SizedBox(height: 12),
-            const Text('Ожидание подключения...', style: TextStyle(color: DiscordColors.textMuted)),
+            Text('Ожидание подключения...', style: TextStyle(color: BullyPalette.of(context).textMuted)),
           ],
         ],
       ),
@@ -176,8 +176,8 @@ class _JoinViewState extends State<_JoinView> {
       builder: (context) {
         final controller = TextEditingController();
         return AlertDialog(
-          backgroundColor: DiscordColors.bgSecondary,
-          title: const Text('Введите код', style: TextStyle(color: DiscordColors.textNormal)),
+          backgroundColor: BullyPalette.of(context).bgSecondary,
+          title: Text('Введите код', style: TextStyle(color: BullyPalette.of(context).textNormal)),
           content: TextField(controller: controller, autofocus: true, decoration: const InputDecoration(hintText: '32-значный код')),
           actions: [
             TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Отмена')),
@@ -218,19 +218,19 @@ class _JoinViewState extends State<_JoinView> {
     return Column(
       children: [
         if (_error != null)
-          Padding(padding: const EdgeInsets.all(12), child: Text(_error!, style: const TextStyle(color: DiscordColors.danger))),
-        const Padding(
-          padding: EdgeInsets.all(12),
-          child: Text('Устройства, найденные в сети:', style: TextStyle(color: DiscordColors.textMuted)),
+          Padding(padding: const EdgeInsets.all(12), child: Text(_error!, style: const TextStyle(color: BullyColors.danger))),
+        Padding(
+          padding: const EdgeInsets.all(12),
+          child: Text('Устройства, найденные в сети:', style: TextStyle(color: BullyPalette.of(context).textMuted)),
         ),
         Expanded(
           child: _hosts.isEmpty
-              ? const Center(child: Text('Поиск...', style: TextStyle(color: DiscordColors.textMuted)))
+              ? Center(child: Text('Поиск...', style: TextStyle(color: BullyPalette.of(context).textMuted)))
               : ListView(
                   children: _hosts
                       .map((h) => ListTile(
-                            leading: const Icon(Icons.devices, color: DiscordColors.blurple),
-                            title: Text(h.name, style: const TextStyle(color: DiscordColors.textNormal)),
+                            leading: const Icon(Icons.devices, color: BullyColors.blurple),
+                            title: Text(h.name, style: TextStyle(color: BullyPalette.of(context).textNormal)),
                             onTap: () => _pick(h),
                           ))
                       .toList(),

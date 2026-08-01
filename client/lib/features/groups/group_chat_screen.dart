@@ -8,7 +8,7 @@ import '../../core/app_services.dart';
 import '../../core/network/ws_client.dart';
 import '../../core/storage/chat_history_store.dart';
 import '../../core/storage/secure_store.dart';
-import '../../theme/discord_theme.dart';
+import '../../theme/bully_theme.dart';
 import '../chat_setup/set_passphrase_dialog.dart';
 import '../dm/dm_chat_screen.dart' show ChatMessage;
 
@@ -168,8 +168,8 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: DiscordColors.bgPrimary,
-      appBar: AppBar(backgroundColor: DiscordColors.bgPrimary, title: Text('# ${widget.groupName}')),
+      backgroundColor: BullyPalette.of(context).bgPrimary,
+      appBar: AppBar(backgroundColor: BullyPalette.of(context).bgPrimary, title: Text('# ${widget.groupName}')),
       body: _ready
           ? Column(
               children: [
@@ -185,7 +185,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                           margin: const EdgeInsets.symmetric(vertical: 4),
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                           decoration: BoxDecoration(
-                            color: m.isMine ? DiscordColors.blurple : DiscordColors.bgSecondary,
+                            color: m.isMine ? BullyColors.blurple : BullyPalette.of(context).bgSecondary,
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(m.text, style: const TextStyle(color: Colors.white)),
@@ -206,7 +206,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      IconButton(icon: const Icon(Icons.send, color: DiscordColors.blurple), onPressed: _send),
+                      IconButton(icon: const Icon(Icons.send, color: BullyColors.blurple), onPressed: _send),
                     ],
                   ),
                 ),

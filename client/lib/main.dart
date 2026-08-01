@@ -12,7 +12,8 @@ import 'core/storage/secure_store.dart';
 import 'features/auth/auth_screen.dart';
 import 'features/nodes/node_picker_screen.dart';
 import 'features/shell/app_shell.dart';
-import 'theme/discord_theme.dart';
+import 'theme/bully_theme.dart';
+import 'theme/theme_controller.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,6 +21,7 @@ void main() async {
   await NodeStore.init();
   await BandwidthTracker.init();
   await MediaCache.init();
+  await ThemeController.instance.init();
   runApp(const BullyApp());
 }
 
@@ -28,11 +30,16 @@ class BullyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Bully',
-      debugShowCheckedModeBanner: false,
-      theme: buildDiscordTheme(),
-      home: const _Bootstrap(),
+    return ListenableBuilder(
+      listenable: ThemeController.instance,
+      builder: (context, _) => MaterialApp(
+        title: 'Bully',
+        debugShowCheckedModeBanner: false,
+        themeMode: ThemeController.instance.mode,
+        theme: buildBullyTheme(Brightness.light),
+        darkTheme: buildBullyTheme(Brightness.dark),
+        home: const _Bootstrap(),
+      ),
     );
   }
 }

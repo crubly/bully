@@ -1,5 +1,5 @@
 name: bully_client
-description: Discord-style E2E encrypted messenger client.
+description: E2E encrypted messenger client.
 publish_to: "none"
 version: 0.1.0
 

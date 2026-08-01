@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/app_services.dart';
-import '../../theme/discord_theme.dart';
+import '../../theme/bully_theme.dart';
 
 Future<Map<String, dynamic>?> showNewDmDialog(BuildContext context) async {
   final services = AppServices.of(context);
@@ -12,8 +12,8 @@ Future<Map<String, dynamic>?> showNewDmDialog(BuildContext context) async {
     context: context,
     builder: (context) => StatefulBuilder(
       builder: (context, setState) => AlertDialog(
-        backgroundColor: DiscordColors.bgSecondary,
-        title: const Text('Новое сообщение', style: TextStyle(color: DiscordColors.textNormal)),
+        backgroundColor: BullyPalette.of(context).bgSecondary,
+        title: Text('Новое сообщение', style: TextStyle(color: BullyPalette.of(context).textNormal)),
         content: SizedBox(
           width: 320,
           child: Column(
@@ -33,7 +33,7 @@ Future<Map<String, dynamic>?> showNewDmDialog(BuildContext context) async {
               ),
               const SizedBox(height: 8),
               ...results.map((u) => ListTile(
-                    title: Text('@${u['username']}', style: const TextStyle(color: DiscordColors.textNormal)),
+                    title: Text('@${u['username']}', style: TextStyle(color: BullyPalette.of(context).textNormal)),
                     onTap: () => Navigator.of(context).pop(u as Map<String, dynamic>),
                   )),
             ],

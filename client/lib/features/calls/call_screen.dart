@@ -6,7 +6,7 @@ import 'package:flutter_webrtc/flutter_webrtc.dart';
 
 import '../../core/app_services.dart';
 import '../../core/calls/call_controller.dart';
-import '../../theme/discord_theme.dart';
+import '../../theme/bully_theme.dart';
 
 class CallScreen extends StatefulWidget {
   final IncomingCall? incoming;
@@ -91,8 +91,8 @@ class _CallScreenState extends State<CallScreen> {
             Positioned.fill(
               child: _remoteRenderer.srcObject != null
                   ? RTCVideoView(_remoteRenderer, objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitCover)
-                  : const Center(
-                      child: Icon(Icons.person, size: 96, color: DiscordColors.textMuted),
+                  : Center(
+                      child: Icon(Icons.person, size: 96, color: BullyPalette.of(context).textMuted),
                     ),
             ),
             if (_localRenderer.srcObject != null)
@@ -123,7 +123,7 @@ class _CallScreenState extends State<CallScreen> {
                 children: [
                   _controlButton(
                     icon: Icons.mic,
-                    iconColor: _muted ? DiscordColors.danger : Colors.white,
+                    iconColor: _muted ? BullyColors.danger : Colors.white,
                     onTap: _toggleMute,
                   ),
                   const SizedBox(width: 16),
@@ -135,7 +135,7 @@ class _CallScreenState extends State<CallScreen> {
                   if (_isDesktop) const SizedBox(width: 16),
                   _controlButton(
                     icon: Icons.call_end,
-                    color: DiscordColors.danger,
+                    color: BullyColors.danger,
                     onTap: () => calls.hangUp(),
                   ),
                 ],
@@ -158,13 +158,13 @@ class _CallScreenState extends State<CallScreen> {
   Widget _controlButton({
     required IconData icon,
     required VoidCallback onTap,
-    Color color = DiscordColors.bgSecondary,
+    Color? color,
     Color iconColor = Colors.white,
   }) {
     return InkWell(
       onTap: onTap,
       customBorder: const CircleBorder(),
-      child: CircleAvatar(radius: 28, backgroundColor: color, child: Icon(icon, color: iconColor)),
+      child: CircleAvatar(radius: 28, backgroundColor: color ?? BullyPalette.of(context).bgSecondary, child: Icon(icon, color: iconColor)),
     );
   }
 }

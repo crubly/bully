@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import '../../core/app_services.dart';
 import '../../core/calls/call_controller.dart';
 import '../../core/storage/secure_store.dart';
-import '../../theme/discord_theme.dart';
+import '../../theme/bully_theme.dart';
 import '../calls/call_screen.dart';
 import '../dm/dm_chat_screen.dart';
 import '../dm/new_dm_dialog.dart';
@@ -71,9 +71,9 @@ class _AppShellState extends State<AppShell> {
         context: context,
         barrierDismissible: false,
         builder: (context) => AlertDialog(
-          backgroundColor: DiscordColors.bgSecondary,
-          title: Text('Входящий звонок от @${peer['username']}', style: const TextStyle(color: DiscordColors.textNormal)),
-          content: Text(call.video ? 'Видеозвонок' : 'Аудиозвонок', style: const TextStyle(color: DiscordColors.textMuted)),
+          backgroundColor: BullyPalette.of(context).bgSecondary,
+          title: Text('Входящий звонок от @${peer['username']}', style: TextStyle(color: BullyPalette.of(context).textNormal)),
+          content: Text(call.video ? 'Видеозвонок' : 'Аудиозвонок', style: TextStyle(color: BullyPalette.of(context).textMuted)),
           actions: [
             TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Отклонить')),
             ElevatedButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Принять')),
@@ -169,7 +169,7 @@ class _AppShellState extends State<AppShell> {
         children: [
           Container(
             width: 72,
-            color: DiscordColors.bgTertiary,
+            color: BullyPalette.of(context).bgTertiary,
             child: Column(
               children: [
                 const SizedBox(height: 12),
@@ -184,14 +184,14 @@ class _AppShellState extends State<AppShell> {
                           ),
                         )),
                         child: CircleAvatar(
-                          backgroundColor: DiscordColors.blurple,
+                          backgroundColor: BullyColors.blurple,
                           child: Text(e.label.isNotEmpty ? e.label[0].toUpperCase() : '?'),
                         ),
                       ),
                     )),
                 const SizedBox(height: 6),
                 IconButton(
-                  icon: const CircleAvatar(backgroundColor: DiscordColors.bgSecondary, child: Icon(Icons.add, color: DiscordColors.online)),
+                  icon: CircleAvatar(backgroundColor: BullyPalette.of(context).bgSecondary, child: Icon(Icons.add, color: BullyColors.online)),
                   onPressed: _openNewGroup,
                   tooltip: 'Новая группа',
                 ),
@@ -200,15 +200,15 @@ class _AppShellState extends State<AppShell> {
           ),
           Container(
             width: 240,
-            color: DiscordColors.bgSecondary,
+            color: BullyPalette.of(context).bgSecondary,
             child: Column(
               children: [
                 Padding(
                   padding: const EdgeInsets.all(12),
                   child: Row(
                     children: [
-                      const Expanded(child: Text('Личные сообщения', style: TextStyle(color: DiscordColors.textMuted))),
-                      IconButton(icon: const Icon(Icons.edit, size: 18, color: DiscordColors.textMuted), onPressed: _openNewDm),
+                      Expanded(child: Text('Личные сообщения', style: TextStyle(color: BullyPalette.of(context).textMuted))),
+                      IconButton(icon: Icon(Icons.edit, size: 18, color: BullyPalette.of(context).textMuted), onPressed: _openNewDm),
                     ],
                   ),
                 ),
@@ -219,8 +219,8 @@ class _AppShellState extends State<AppShell> {
                           children: _entries
                               .where((e) => e.kind == 'dm')
                               .map((e) => ListTile(
-                                    leading: const CircleAvatar(backgroundColor: DiscordColors.blurple, child: Icon(Icons.person, color: Colors.white)),
-                                    title: Text(e.label, style: const TextStyle(color: DiscordColors.textNormal)),
+                                    leading: const CircleAvatar(backgroundColor: BullyColors.blurple, child: Icon(Icons.person, color: Colors.white)),
+                                    title: Text(e.label, style: TextStyle(color: BullyPalette.of(context).textNormal)),
                                     onTap: () => Navigator.of(context).push(MaterialPageRoute(
                                       builder: (_) => DmChatScreen(
                                         conversationId: e.conversationId,
@@ -243,9 +243,9 @@ class _AppShellState extends State<AppShell> {
           ),
           Expanded(
             child: Container(
-              color: DiscordColors.bgPrimary,
-              child: const Center(
-                child: Text('Выберите чат слева или начните новый', style: TextStyle(color: DiscordColors.textMuted)),
+              color: BullyPalette.of(context).bgPrimary,
+              child: Center(
+                child: Text('Выберите чат слева или начните новый', style: TextStyle(color: BullyPalette.of(context).textMuted)),
               ),
             ),
           ),
@@ -272,13 +272,13 @@ class _UserBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: 52,
-      color: DiscordColors.bgTertiary,
+      color: BullyPalette.of(context).bgTertiary,
       padding: const EdgeInsets.symmetric(horizontal: 8),
       child: Row(
         children: [
           CircleAvatar(
             radius: 16,
-            backgroundColor: DiscordColors.blurple,
+            backgroundColor: BullyColors.blurple,
             child: Text(
               (username?.isNotEmpty ?? false) ? username![0].toUpperCase() : '?',
               style: const TextStyle(color: Colors.white, fontSize: 13),
@@ -289,16 +289,16 @@ class _UserBar extends StatelessWidget {
             child: Text(
               username ?? '...',
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: DiscordColors.textNormal, fontSize: 13, fontWeight: FontWeight.w600),
+              style: TextStyle(color: BullyPalette.of(context).textNormal, fontSize: 13, fontWeight: FontWeight.w600),
             ),
           ),
           IconButton(
-            icon: Icon(Icons.mic, size: 18, color: micMuted ? DiscordColors.danger : DiscordColors.textMuted),
+            icon: Icon(Icons.mic, size: 18, color: micMuted ? BullyColors.danger : BullyPalette.of(context).textMuted),
             onPressed: onToggleMic,
             tooltip: micMuted ? 'Включить микрофон' : 'Выключить микрофон',
           ),
           IconButton(
-            icon: const Icon(Icons.settings, size: 18, color: DiscordColors.textMuted),
+            icon: Icon(Icons.settings, size: 18, color: BullyPalette.of(context).textMuted),
             onPressed: onOpenSettings,
             tooltip: 'Настройки',
           ),

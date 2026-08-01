@@ -2,7 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/app_services.dart';
-import '../../theme/discord_theme.dart';
+import '../../theme/bully_theme.dart';
 
 class _SessionInfo {
   final String id;
@@ -94,9 +94,9 @@ class _SessionsScreenState extends State<SessionsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: DiscordColors.bgPrimary,
+      backgroundColor: BullyPalette.of(context).bgPrimary,
       appBar: AppBar(
-        backgroundColor: DiscordColors.bgPrimary,
+        backgroundColor: BullyPalette.of(context).bgPrimary,
         title: const Text('Сессии'),
         actions: [
           TextButton(onPressed: _revokeAll, child: const Text('Выйти на всех, кроме этого')),
@@ -107,24 +107,24 @@ class _SessionsScreenState extends State<SessionsScreen> {
           : Column(
               children: [
                 if (_error != null)
-                  Padding(padding: const EdgeInsets.all(12), child: Text(_error!, style: const TextStyle(color: DiscordColors.danger))),
+                  Padding(padding: const EdgeInsets.all(12), child: Text(_error!, style: const TextStyle(color: BullyColors.danger))),
                 Expanded(
                   child: ListView(
                     children: _sessions
                         .map((s) => ListTile(
-                              leading: Icon(_iconFor(s.platform), color: DiscordColors.blurple),
+                              leading: Icon(_iconFor(s.platform), color: BullyColors.blurple),
                               title: Text(
                                 '${s.deviceName}${s.current ? ' (это устройство)' : ''}',
-                                style: const TextStyle(color: DiscordColors.textNormal),
+                                style: TextStyle(color: BullyPalette.of(context).textNormal),
                               ),
                               subtitle: Text(
                                 'Платформа: ${s.platform} · последняя активность: ${_formatAgo(s.lastSeenAt)}',
-                                style: const TextStyle(color: DiscordColors.textMuted),
+                                style: TextStyle(color: BullyPalette.of(context).textMuted),
                               ),
                               trailing: s.current
                                   ? null
                                   : IconButton(
-                                      icon: const Icon(Icons.logout, color: DiscordColors.danger),
+                                      icon: const Icon(Icons.logout, color: BullyColors.danger),
                                       onPressed: () => _revoke(s.id),
                                       tooltip: 'Кикнуть сессию',
                                     ),
