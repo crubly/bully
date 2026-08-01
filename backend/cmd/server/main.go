@@ -91,6 +91,7 @@ func main() {
 		r.Get("/sessions", sessionHandler.ListHTTP)
 		r.Delete("/sessions/{id}", sessionHandler.RevokeHTTP)
 		r.Post("/sessions/revoke-all", sessionHandler.RevokeAllHTTP)
+		r.Put("/sessions/policy", sessionHandler.PolicyHTTP)
 		r.Get("/ice-servers", iceHandler.Serve)
 	})
 

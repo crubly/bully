@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/app_services.dart';
 import '../../theme/bully_theme.dart';
+import '../transfer/transfer_screen.dart';
 
 class _SessionInfo {
   final String id;
@@ -31,6 +32,9 @@ class _SessionInfo {
       );
 }
 
+const _oneDay = 86400;
+const _timeoutPresets = [_oneDay, 3 * _oneDay, 7 * _oneDay, 30 * _oneDay];
+
 class SessionsScreen extends StatefulWidget {
   final bool embedded;
   const SessionsScreen({super.key, this.embedded = false});
@@ -41,6 +45,7 @@ class SessionsScreen extends StatefulWidget {
 
 class _SessionsScreenState extends State<SessionsScreen> {
   List<_SessionInfo> _sessions = [];
+  int _timeoutSeconds = 30 * _oneDay;
   bool _loading = true;
   String? _error;
 
@@ -54,8 +59,10 @@ class _SessionsScreenState extends State<SessionsScreen> {
     setState(() => _loading = true);
     final services = AppServices.of(context);
     final raw = await services.api.listSessions();
+    final sessionsRaw = raw['sessions'] as List? ?? [];
     setState(() {
-      _sessions = raw.map((s) => _SessionInfo.fromJson(s as Map<String, dynamic>)).toList();
+      _sessions = sessionsRaw.map((s) => _SessionInfo.fromJson(s as Map<String, dynamic>)).toList();
+      _timeoutSeconds = raw['inactivity_timeout_seconds'] as int? ?? _timeoutSeconds;
       _loading = false;
     });
   }
@@ -92,6 +99,53 @@ class _SessionsScreenState extends State<SessionsScreen> {
     }
   }
 
+  Future<void> _setTimeout(int seconds) async {
+    final services = AppServices.of(context);
+    setState(() => _timeoutSeconds = seconds);
+    try {
+      await services.api.setSessionInactivityTimeout(seconds);
+    } catch (e) {
+      setState(() => _error = 'Не удалось сохранить срок автозавершения.');
+    }
+  }
+
+  Future<void> _pickCustomTimeout() async {
+    final controller = TextEditingController();
+    final days = await showDialog<int>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: BullyPalette.of(context).bgSecondary,
+        title: Text('Свой срок (дней)', style: TextStyle(color: BullyPalette.of(context).textNormal)),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(hintText: 'Например, 14'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Отмена')),
+          ElevatedButton(
+            onPressed: () {
+              final v = int.tryParse(controller.text.trim());
+              Navigator.of(context).pop(v);
+            },
+            child: const Text('Сохранить'),
+          ),
+        ],
+      ),
+    );
+    if (days == null || days <= 0) return;
+    await _setTimeout(days * _oneDay);
+  }
+
+  String _timeoutLabel(int seconds) {
+    final days = seconds ~/ _oneDay;
+    if (days == 1) return '1 день';
+    if (days == 3) return '3 дня';
+    if (days == 7) return 'Неделя';
+    if (days == 30) return 'Месяц';
+    return '$days дн.';
+  }
+
   Widget _body(BuildContext context) {
     return _loading
         ? const Center(child: CircularProgressIndicator())
@@ -99,6 +153,42 @@ class _SessionsScreenState extends State<SessionsScreen> {
             children: [
               if (_error != null)
                 Padding(padding: const EdgeInsets.all(12), child: Text(_error!, style: const TextStyle(color: BullyColors.danger))),
+              Container(
+                margin: const EdgeInsets.all(12),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(color: BullyPalette.of(context).bgTertiary, borderRadius: BorderRadius.circular(12)),
+                child: ListTile(
+                  leading: Icon(Icons.timer_off, color: BullyPalette.of(context).textMuted),
+                  title: Text('Автозавершение неактивной сессии', style: TextStyle(color: BullyPalette.of(context).textNormal)),
+                  subtitle: Text('Хранится на сервере, применяется ко всем устройствам аккаунта', style: TextStyle(color: BullyPalette.of(context).textMuted, fontSize: 12)),
+                  trailing: DropdownButton<int>(
+                    value: _timeoutPresets.contains(_timeoutSeconds) ? _timeoutSeconds : -1,
+                    dropdownColor: BullyPalette.of(context).bgSecondary,
+                    items: [
+                      ..._timeoutPresets.map((s) => DropdownMenuItem(value: s, child: Text(_timeoutLabel(s)))),
+                      DropdownMenuItem(value: -1, child: Text(_timeoutPresets.contains(_timeoutSeconds) ? 'Другое...' : _timeoutLabel(_timeoutSeconds))),
+                    ],
+                    onChanged: (v) {
+                      if (v == -1) {
+                        _pickCustomTimeout();
+                      } else if (v != null) {
+                        _setTimeout(v);
+                      }
+                    },
+                  ),
+                ),
+              ),
+              Container(
+                margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                decoration: BoxDecoration(color: BullyPalette.of(context).bgTertiary, borderRadius: BorderRadius.circular(12)),
+                child: ListTile(
+                  leading: const Icon(Icons.phonelink, color: BullyColors.blurple),
+                  title: Text('Перенести чаты', style: TextStyle(color: BullyPalette.of(context).textNormal)),
+                  subtitle: Text('На новое устройство по локальной сети', style: TextStyle(color: BullyPalette.of(context).textMuted, fontSize: 12)),
+                  trailing: Icon(Icons.chevron_right, color: BullyPalette.of(context).textMuted),
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TransferScreen())),
+                ),
+              ),
               Expanded(
                 child: ListView(
                   children: _sessions

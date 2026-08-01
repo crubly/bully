@@ -1,11 +1,14 @@
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 CREATE TABLE IF NOT EXISTS users (
-    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    username      TEXT NOT NULL UNIQUE,
-    password_hash TEXT NOT NULL,
-    created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    username                    TEXT NOT NULL UNIQUE,
+    password_hash               TEXT NOT NULL,
+    session_inactivity_seconds  INTEGER NOT NULL DEFAULT 2592000,
+    created_at                  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS session_inactivity_seconds INTEGER NOT NULL DEFAULT 2592000;
 
 CREATE TABLE IF NOT EXISTS prekeys (
     id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),

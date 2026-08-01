@@ -10,9 +10,12 @@ import (
 )
 
 const MinAgeToKick = 24 * time.Hour
+const MinInactivitySeconds = 3600
+const MaxInactivitySeconds = 365 * 24 * 3600
 
 var ErrSessionTooNew = errors.New("session_too_new")
 var ErrRevoked = errors.New("session_revoked")
+var ErrInvalidPolicy = errors.New("invalid_policy")
 
 type Handler struct {
 	DB *pgxpool.Pool
@@ -31,7 +34,21 @@ func (h *Handler) Create(ctx context.Context, userID, deviceName, platform strin
 	return id, err
 }
 
+func (h *Handler) sweepInactive(ctx context.Context, userID string) error {
+	_, err := h.DB.Exec(ctx, `
+		UPDATE sessions
+		SET revoked_at = now()
+		WHERE user_id = $1
+		  AND revoked_at IS NULL
+		  AND last_seen_at < now() - make_interval(secs => (SELECT session_inactivity_seconds FROM users WHERE id = $1))`,
+		userID)
+	return err
+}
+
 func (h *Handler) IsValid(ctx context.Context, sessionID, userID string) (bool, error) {
+	if err := h.sweepInactive(ctx, userID); err != nil {
+		return false, err
+	}
 	var revoked bool
 	err := h.DB.QueryRow(ctx,
 		`UPDATE sessions SET last_seen_at = now()
@@ -59,6 +76,9 @@ type Info struct {
 }
 
 func (h *Handler) List(ctx context.Context, userID, currentSessionID string) ([]Info, error) {
+	if err := h.sweepInactive(ctx, userID); err != nil {
+		return nil, err
+	}
 	rows, err := h.DB.Query(ctx, `
 		SELECT id, device_name, platform, created_at, last_seen_at, revoked_at
 		FROM sessions
@@ -79,6 +99,20 @@ func (h *Handler) List(ctx context.Context, userID, currentSessionID string) ([]
 		results = append(results, info)
 	}
 	return results, nil
+}
+
+func (h *Handler) GetPolicy(ctx context.Context, userID string) (int, error) {
+	var seconds int
+	err := h.DB.QueryRow(ctx, `SELECT session_inactivity_seconds FROM users WHERE id = $1`, userID).Scan(&seconds)
+	return seconds, err
+}
+
+func (h *Handler) SetPolicy(ctx context.Context, userID string, seconds int) error {
+	if seconds < MinInactivitySeconds || seconds > MaxInactivitySeconds {
+		return ErrInvalidPolicy
+	}
+	_, err := h.DB.Exec(ctx, `UPDATE users SET session_inactivity_seconds = $1 WHERE id = $2`, seconds, userID)
+	return err
 }
 
 func (h *Handler) assertCanKick(ctx context.Context, actingSessionID string) error {

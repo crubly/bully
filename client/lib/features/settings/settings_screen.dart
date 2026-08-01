@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../core/app_services.dart';
+import '../../core/desktop_window.dart';
 import '../../core/storage/secure_store.dart';
 import '../../theme/bully_theme.dart';
 import '../auth/auth_screen.dart';
-import '../transfer/transfer_screen.dart';
 import 'appearance_screen.dart';
 import 'data_usage_screen.dart';
 import 'nodes_screen.dart';
@@ -40,6 +40,29 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   int _selected = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    if (!widget.embedded) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) DesktopWindow.setTitle('Bully — ${_sections(context)[_selected].title}');
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    if (!widget.embedded) DesktopWindow.setTitle('Bully');
+    super.dispose();
+  }
+
+  void _selectSection(int i) {
+    setState(() => _selected = i);
+    if (!widget.embedded) {
+      DesktopWindow.setTitle('Bully — ${_sections(context)[i].title}');
+    }
+  }
 
   Future<void> _logout(BuildContext context) async {
     final confirm = await showDialog<bool>(
@@ -80,15 +103,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           builder: (_) => const AppearanceScreen(embedded: true),
         ),
         _SettingsSection(
-          icon: Icons.phonelink,
-          title: 'Перенос чатов',
-          subtitle: 'Скопировать чаты на новое устройство по локальной сети',
-          builder: (_) => const TransferScreen(embedded: true),
-        ),
-        _SettingsSection(
           icon: Icons.devices,
           title: 'Сессии',
-          subtitle: 'Активные входы в аккаунт на разных устройствах',
+          subtitle: 'Устройства, автозавершение сессий, перенос чатов',
           builder: (_) => const SessionsScreen(embedded: true),
         ),
         _SettingsSection(
@@ -155,7 +172,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                           ),
                         ),
-                        onTap: s.onTap ?? () => setState(() => _selected = i),
+                        onTap: s.onTap ?? () => _selectSection(i),
                       ),
                     );
                   },
@@ -177,9 +194,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     if (widget.embedded) return _body(context);
+    final desktop = DesktopWindow.isDesktop;
     return Scaffold(
       backgroundColor: BullyPalette.of(context).bgPrimary,
-      appBar: AppBar(backgroundColor: BullyPalette.of(context).bgPrimary, title: const Text('Настройки')),
+      appBar: AppBar(
+        backgroundColor: BullyPalette.of(context).bgPrimary,
+        title: desktop ? null : const Text('Настройки'),
+        leadingWidth: desktop ? 40 : null,
+        leading: desktop
+            ? IconButton(
+                padding: EdgeInsets.zero,
+                icon: const Icon(Icons.arrow_back, size: 18),
+                onPressed: () => Navigator.of(context).pop(),
+              )
+            : null,
+      ),
       body: _body(context),
     );
   }

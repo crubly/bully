@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'core/app_services.dart';
 import 'core/avatar/avatar_store.dart';
+import 'core/desktop_window.dart';
 import 'core/media/media_cache.dart';
 import 'core/network/api_client.dart';
 import 'core/network/bandwidth_tracker.dart';
@@ -28,6 +29,8 @@ void main() async {
         ),
       );
   WidgetsFlutterBinding.ensureInitialized();
+  await DesktopWindow.ensureInitialized();
+  await DesktopWindow.setTitle('Bully');
   await ChatHistoryStore.init();
   await NodeStore.init();
   await BandwidthTracker.init();

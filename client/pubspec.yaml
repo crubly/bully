@@ -19,9 +19,10 @@ dependencies:
   hive_flutter: ^1.1.0
   bonsoir: ^5.1.6
   crypto: ^3.0.5
-  flutter_webrtc: ^0.11.7
+  flutter_webrtc: ^1.5.2
   path_provider: ^2.1.4
   file_picker: ^8.1.2
+  window_manager: ^0.4.3
 
 dev_dependencies:
   flutter_test:

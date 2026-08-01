@@ -27,8 +27,40 @@ func (h *Handler) ListHTTP(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusInternalServerError, "db_error")
 		return
 	}
+	policy, err := h.GetPolicy(r.Context(), claims.UserID)
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, "db_error")
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(list)
+	json.NewEncoder(w).Encode(map[string]any{
+		"sessions":                   list,
+		"inactivity_timeout_seconds": policy,
+	})
+}
+
+func (h *Handler) PolicyHTTP(w http.ResponseWriter, r *http.Request) {
+	claims := auth.FromContext(r.Context())
+	if claims == nil {
+		writeErr(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+	var body struct {
+		Seconds int `json:"inactivity_timeout_seconds"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeErr(w, http.StatusBadRequest, "invalid_body")
+		return
+	}
+	if err := h.SetPolicy(r.Context(), claims.UserID, body.Seconds); err != nil {
+		if errors.Is(err, ErrInvalidPolicy) {
+			writeErr(w, http.StatusBadRequest, "invalid_policy")
+			return
+		}
+		writeErr(w, http.StatusInternalServerError, "db_error")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *Handler) RevokeHTTP(w http.ResponseWriter, r *http.Request) {

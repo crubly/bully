@@ -51,14 +51,17 @@ class ApiClient {
     return resp.data as Map<String, dynamic>;
   }
 
-  Future<List<dynamic>> listSessions() async {
+  Future<Map<String, dynamic>> listSessions() async {
     final resp = await _dio.get('/sessions');
-    return resp.data as List<dynamic>;
+    return resp.data as Map<String, dynamic>;
   }
 
   Future<void> revokeSession(String sessionId) => _dio.delete('/sessions/$sessionId');
 
   Future<void> revokeAllOtherSessions() => _dio.post('/sessions/revoke-all');
+
+  Future<void> setSessionInactivityTimeout(int seconds) =>
+      _dio.put('/sessions/policy', data: {'inactivity_timeout_seconds': seconds});
 
   Future<List<dynamic>> searchUsers(String query) async {
     final resp = await _dio.get('/users/search', queryParameters: {'q': query});
