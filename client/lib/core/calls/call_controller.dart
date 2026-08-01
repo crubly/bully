@@ -77,20 +77,25 @@ class CallController {
     _isVideo = video;
     _setState(CallState.outgoingRinging);
 
-    _pc = await createPeerConnection(await _rtcConfig());
-    _wireCommonHandlers();
+    try {
+      _pc = await createPeerConnection(await _rtcConfig());
+      _wireCommonHandlers();
 
-    _localStream = await navigator.mediaDevices.getUserMedia({'audio': true, 'video': video});
-    _localStreamController.add(_localStream);
-    for (final track in _localStream!.getTracks()) {
-      await _pc!.addTrack(track, _localStream!);
+      _localStream = await navigator.mediaDevices.getUserMedia({'audio': true, 'video': video});
+      _localStreamController.add(_localStream);
+      for (final track in _localStream!.getTracks()) {
+        await _pc!.addTrack(track, _localStream!);
+      }
+
+      final offer = await _pc!.createOffer();
+      final munged = RTCSessionDescription(SdpPrivacy.disableAudioDtx(offer.sdp!), offer.type);
+      await _pc!.setLocalDescription(munged);
+
+      await _sendSignal({'kind': 'offer', 'sdp': munged.sdp, 'video': video});
+    } catch (e) {
+      _reset();
+      rethrow;
     }
-
-    final offer = await _pc!.createOffer();
-    final munged = RTCSessionDescription(SdpPrivacy.disableAudioDtx(offer.sdp!), offer.type);
-    await _pc!.setLocalDescription(munged);
-
-    await _sendSignal({'kind': 'offer', 'sdp': munged.sdp, 'video': video});
   }
 
   Future<void> acceptCall(IncomingCall call) async {
@@ -99,17 +104,22 @@ class CallController {
     _isVideo = call.video;
     _setState(CallState.connecting);
 
-    _localStream = await navigator.mediaDevices.getUserMedia({'audio': true, 'video': call.video});
-    _localStreamController.add(_localStream);
-    for (final track in _localStream!.getTracks()) {
-      await _pc!.addTrack(track, _localStream!);
-    }
+    try {
+      _localStream = await navigator.mediaDevices.getUserMedia({'audio': true, 'video': call.video});
+      _localStreamController.add(_localStream);
+      for (final track in _localStream!.getTracks()) {
+        await _pc!.addTrack(track, _localStream!);
+      }
 
-    final answer = await _pc!.createAnswer();
-    final munged = RTCSessionDescription(SdpPrivacy.disableAudioDtx(answer.sdp!), answer.type);
-    await _pc!.setLocalDescription(munged);
-    await _sendSignal({'kind': 'answer', 'sdp': munged.sdp});
-    _setState(CallState.active);
+      final answer = await _pc!.createAnswer();
+      final munged = RTCSessionDescription(SdpPrivacy.disableAudioDtx(answer.sdp!), answer.type);
+      await _pc!.setLocalDescription(munged);
+      await _sendSignal({'kind': 'answer', 'sdp': munged.sdp});
+      _setState(CallState.active);
+    } catch (e) {
+      _reset();
+      rethrow;
+    }
   }
 
   Future<void> declineCall(IncomingCall call) async {
@@ -134,13 +144,30 @@ class CallController {
 
     final senders = await _pc!.senders;
     final videoSender = senders.firstWhere((s) => s.track?.kind == 'video', orElse: () => throw StateError('no video sender'));
-    if (enable) {
-      final screenStream = await navigator.mediaDevices.getDisplayMedia({'video': true});
-      await videoSender.replaceTrack(screenStream.getVideoTracks().first);
-    } else {
-      final cameraStream = await navigator.mediaDevices.getUserMedia({'video': true});
-      await videoSender.replaceTrack(cameraStream.getVideoTracks().first);
+
+    final newStream = enable
+        ? await navigator.mediaDevices.getDisplayMedia({'video': true})
+        : await navigator.mediaDevices.getUserMedia({'video': true});
+    final newTrack = newStream.getVideoTracks().first;
+
+    // getDisplayMedia/getUserMedia can hand back extra tracks we didn't ask
+    // for (e.g. system audio on some platforms) — stop anything besides the
+    // one video track we're actually going to use, or it keeps capturing.
+    for (final track in newStream.getTracks()) {
+      if (track.id != newTrack.id) await track.stop();
     }
+
+    final oldTrack = videoSender.track;
+    await videoSender.replaceTrack(newTrack);
+    if (oldTrack != null) await oldTrack.stop();
+
+    // replaceTrack only affects what's sent over the peer connection — swap
+    // it into the local preview stream too, or the self-view keeps showing
+    // the old camera/screen feed after switching.
+    final oldLocalTrack = _localStream!.getVideoTracks().isEmpty ? null : _localStream!.getVideoTracks().first;
+    if (oldLocalTrack != null) await _localStream!.removeTrack(oldLocalTrack);
+    await _localStream!.addTrack(newTrack);
+    _localStreamController.add(_localStream);
   }
 
   void _wireCommonHandlers() {
@@ -214,6 +241,8 @@ class CallController {
   void _reset() {
     _localStream?.getTracks().forEach((t) => t.stop());
     _localStream?.dispose();
+    _remoteStream?.getTracks().forEach((t) => t.stop());
+    _remoteStream?.dispose();
     _pc?.close();
     _pc = null;
     _localStream = null;
