@@ -1,0 +1,244 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+
+import '../../core/app_services.dart';
+import '../../core/calls/call_controller.dart';
+import '../../core/storage/secure_store.dart';
+import '../../theme/discord_theme.dart';
+import '../calls/call_screen.dart';
+import '../dm/dm_chat_screen.dart';
+import '../dm/new_dm_dialog.dart';
+import '../groups/group_chat_screen.dart';
+import '../groups/new_group_dialog.dart';
+import '../settings/settings_screen.dart';
+
+class _ConversationEntry {
+  final String conversationId;
+  final String kind; // "dm" | "group"
+  final String? groupId;
+  final String label;
+  final String? peerUserId;
+
+  _ConversationEntry({
+    required this.conversationId,
+    required this.kind,
+    required this.label,
+    this.groupId,
+    this.peerUserId,
+  });
+}
+
+/// Discord-style shell: a narrow server/group rail on the left, a
+/// conversation list in the middle, and the active chat filling the rest.
+class AppShell extends StatefulWidget {
+  const AppShell({super.key});
+
+  @override
+  State<AppShell> createState() => _AppShellState();
+}
+
+class _AppShellState extends State<AppShell> {
+  List<_ConversationEntry> _entries = [];
+  bool _loading = true;
+  StreamSubscription<IncomingCall>? _incomingCallSub;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadConversations();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _listenForIncomingCalls());
+  }
+
+  void _listenForIncomingCalls() {
+    _incomingCallSub = AppServices.of(context).calls.incomingCalls.listen((call) async {
+      final peer = await AppServices.of(context).api.getUser(call.fromUserId);
+      if (!mounted) return;
+      final accept = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          backgroundColor: DiscordColors.bgSecondary,
+          title: Text('Входящий звонок от @${peer['username']}', style: const TextStyle(color: DiscordColors.textNormal)),
+          content: Text(call.video ? 'Видеозвонок' : 'Аудиозвонок', style: const TextStyle(color: DiscordColors.textMuted)),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Отклонить')),
+            ElevatedButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Принять')),
+          ],
+        ),
+      );
+      final services = AppServices.of(context);
+      if (accept == true) {
+        await services.calls.acceptCall(call);
+        if (mounted) {
+          Navigator.of(context).push(MaterialPageRoute(builder: (_) => CallScreen(incoming: call)));
+        }
+      } else {
+        await services.calls.declineCall(call);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _incomingCallSub?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _loadConversations() async {
+    setState(() => _loading = true);
+    final services = AppServices.of(context);
+    final myId = await SecureStore.getUserId(services.api.baseUrl);
+    final raw = await services.api.listConversations();
+    final entries = <_ConversationEntry>[];
+    for (final c in raw) {
+      final id = c['id'] as String;
+      final kind = c['kind'] as String;
+      if (kind == 'dm') {
+        final members = (await services.api.conversationMembers(id)).cast<String>();
+        final peerId = members.firstWhere((m) => m != myId, orElse: () => members.first);
+        final peer = await services.api.getUser(peerId);
+        entries.add(_ConversationEntry(
+          conversationId: id,
+          kind: 'dm',
+          label: peer['username'] as String,
+          peerUserId: peerId,
+        ));
+      } else {
+        entries.add(_ConversationEntry(
+          conversationId: id,
+          kind: 'group',
+          groupId: c['group_id'] as String,
+          label: (c['group_name'] as String?) ?? 'Группа',
+        ));
+      }
+    }
+    setState(() {
+      _entries = entries;
+      _loading = false;
+    });
+  }
+
+  Future<void> _openNewDm() async {
+    final peer = await showNewDmDialog(context);
+    if (peer == null) return;
+    final services = AppServices.of(context);
+    final convo = await services.api.createDm(peer['id'] as String);
+    if (!mounted) return;
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => DmChatScreen(
+        conversationId: convo['id'] as String,
+        peerUserId: peer['id'] as String,
+        peerUsername: peer['username'] as String,
+      ),
+    ));
+    _loadConversations();
+  }
+
+  Future<void> _openNewGroup() async {
+    final group = await showNewGroupDialog(context);
+    if (group == null) return;
+    if (!mounted) return;
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => GroupChatScreen(
+        conversationId: group['conversation_id'] as String,
+        groupId: group['id'] as String,
+        groupName: group['name'] as String,
+      ),
+    ));
+    _loadConversations();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Row(
+        children: [
+          Container(
+            width: 72,
+            color: DiscordColors.bgTertiary,
+            child: Column(
+              children: [
+                const SizedBox(height: 12),
+                ..._entries.where((e) => e.kind == 'group').map((e) => Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      child: InkWell(
+                        onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                          builder: (_) => GroupChatScreen(
+                            conversationId: e.conversationId,
+                            groupId: e.groupId!,
+                            groupName: e.label,
+                          ),
+                        )),
+                        child: CircleAvatar(
+                          backgroundColor: DiscordColors.blurple,
+                          child: Text(e.label.isNotEmpty ? e.label[0].toUpperCase() : '?'),
+                        ),
+                      ),
+                    )),
+                const SizedBox(height: 6),
+                IconButton(
+                  icon: const CircleAvatar(backgroundColor: DiscordColors.bgSecondary, child: Icon(Icons.add, color: DiscordColors.online)),
+                  onPressed: _openNewGroup,
+                  tooltip: 'Новая группа',
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: const CircleAvatar(backgroundColor: DiscordColors.bgSecondary, child: Icon(Icons.settings, color: DiscordColors.textMuted)),
+                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SettingsScreen())),
+                  tooltip: 'Настройки',
+                ),
+                const SizedBox(height: 12),
+              ],
+            ),
+          ),
+          Container(
+            width: 240,
+            color: DiscordColors.bgSecondary,
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    children: [
+                      const Expanded(child: Text('Личные сообщения', style: TextStyle(color: DiscordColors.textMuted))),
+                      IconButton(icon: const Icon(Icons.edit, size: 18, color: DiscordColors.textMuted), onPressed: _openNewDm),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: _loading
+                      ? const Center(child: CircularProgressIndicator())
+                      : ListView(
+                          children: _entries
+                              .where((e) => e.kind == 'dm')
+                              .map((e) => ListTile(
+                                    leading: const CircleAvatar(backgroundColor: DiscordColors.blurple, child: Icon(Icons.person, color: Colors.white)),
+                                    title: Text(e.label, style: const TextStyle(color: DiscordColors.textNormal)),
+                                    onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                                      builder: (_) => DmChatScreen(
+                                        conversationId: e.conversationId,
+                                        peerUserId: e.peerUserId ?? '',
+                                        peerUsername: e.label,
+                                      ),
+                                    )),
+                                  ))
+                              .toList(),
+                        ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: Container(
+              color: DiscordColors.bgPrimary,
+              child: const Center(
+                child: Text('Выберите чат слева или начните новый', style: TextStyle(color: DiscordColors.textMuted)),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

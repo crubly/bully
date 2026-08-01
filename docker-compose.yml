@@ -1,0 +1,67 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: bully
+      POSTGRES_PASSWORD: bully
+      POSTGRES_DB: bully
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bully"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build: ./backend
+    environment:
+      PORT: 8080
+      DATABASE_URL: postgres://bully:bully@postgres:5432/bully?sslmode=disable
+      REDIS_ADDR: redis:6379
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me}
+      NODE_NAME: ${NODE_NAME:-Bully Node}
+      TURN_HOST: ${TURN_HOST:-127.0.0.1}
+      TURN_SECRET: ${TURN_SECRET:-dev-turn-secret-change-me}
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # TURN relay for calls. Media is always forced through here
+  # (iceTransportPolicy: "relay" on the client) rather than attempted P2P,
+  # so a LAN router only ever sees encrypted traffic to this node's TURN
+  # server — never the other call participant's IP directly.
+  coturn:
+    image: coturn/coturn:4.6
+    command:
+      - "-n"
+      - "--use-auth-secret"
+      - "--static-auth-secret=${TURN_SECRET:-dev-turn-secret-change-me}"
+      - "--realm=bully"
+      - "--listening-port=3478"
+      - "--min-port=49160"
+      - "--max-port=49200"
+      - "--no-cli"
+    ports:
+      - "3478:3478/udp"
+      - "3478:3478/tcp"
+      - "49160-49200:49160-49200/udp"
+
+volumes:
+  postgres_data:

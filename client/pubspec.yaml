@@ -1,0 +1,31 @@
+name: bully_client
+description: Discord-style E2E encrypted messenger client.
+publish_to: "none"
+version: 0.1.0
+
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cryptography: ^2.7.0
+  web_socket_channel: ^3.0.1
+  flutter_secure_storage: ^9.2.2
+  dio: ^5.5.0
+  uuid: ^4.4.2
+  cupertino_icons: ^1.0.8
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+  bonsoir: ^5.1.6
+  crypto: ^3.0.5
+  flutter_webrtc: ^0.11.7
+  path_provider: ^2.1.4
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
