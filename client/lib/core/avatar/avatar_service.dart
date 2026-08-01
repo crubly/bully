@@ -7,6 +7,7 @@ import 'package:crypto/crypto.dart' as crypto_hash;
 import '../crypto/session_manager.dart';
 import '../network/ws_client.dart';
 import 'avatar_store.dart';
+import 'image_validator.dart';
 
 /// Avatars are local-only: they never touch the relay server. An avatar is
 /// shared, E2E encrypted, exactly like a chat message — one-to-one with
@@ -27,7 +28,15 @@ class AvatarService {
 
   String _hashOf(String base64Data) => crypto_hash.sha256.convert(utf8.encode(base64Data)).toString();
 
-  Future<void> setOwnAvatar(Uint8List bytes) => AvatarStore.setOwnAvatarBase64(base64Encode(bytes));
+  /// Throws with a human-readable reason if [bytes] doesn't decode as a
+  /// real image — never accept unvalidated bytes as an avatar (see
+  /// image_validator.dart for why).
+  Future<void> setOwnAvatar(Uint8List bytes) async {
+    final rejection = await ImageValidator.validate(bytes);
+    if (rejection != null) throw StateError(rejection);
+    await AvatarStore.setOwnAvatarBase64(base64Encode(bytes));
+  }
+
   Future<void> clearOwnAvatar() => AvatarStore.clearOwnAvatar();
 
   Uint8List? ownAvatarBytes() {
@@ -69,6 +78,14 @@ class AvatarService {
       final plaintext = await crypto.decrypt(env.conversationId, base64Decode(env.header!), base64Decode(env.ciphertext!));
       final map = jsonDecode(plaintext) as Map<String, dynamic>;
       final avatarB64 = map['avatar'] as String;
+      final bytes = base64Decode(avatarB64);
+
+      // A contact is still a semi-trusted but external input source — run
+      // their avatar through the same decode validation before storing or
+      // displaying it, exactly like our own upload.
+      final rejection = await ImageValidator.validate(bytes);
+      if (rejection != null) return;
+
       await AvatarStore.setPeerAvatarBase64(env.fromUserId, avatarB64);
       _updates.add(env.fromUserId);
     } catch (_) {

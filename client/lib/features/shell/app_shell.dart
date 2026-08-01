@@ -38,6 +38,8 @@ class AppShell extends StatefulWidget {
   State<AppShell> createState() => _AppShellState();
 }
 
+const _wideLayoutBreakpoint = 700.0;
+
 class _AppShellState extends State<AppShell> {
   List<_ConversationEntry> _entries = [];
   bool _loading = true;
@@ -45,6 +47,7 @@ class _AppShellState extends State<AppShell> {
   StreamSubscription<IncomingCall>? _incomingCallSub;
   String? _myUsername;
   bool _micMuted = false;
+  int _mobileTab = 0;
 
   @override
   void initState() {
@@ -74,17 +77,14 @@ class _AppShellState extends State<AppShell> {
     final result = await FilePicker.platform.pickFiles(type: FileType.image, withData: true);
     final bytes = result?.files.single.bytes;
     if (bytes == null) return;
-    if (bytes.length > 2 * 1024 * 1024) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Файл слишком большой (максимум 2 МБ) — выбери картинку поменьше.')),
-        );
-      }
-      return;
-    }
 
     final services = AppServices.of(context);
-    await services.avatars.setOwnAvatar(bytes);
+    try {
+      await services.avatars.setOwnAvatar(bytes);
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      return;
+    }
     if (mounted) setState(() {});
 
     // Avatars are local-only and E2E — push the new one straight to every
@@ -210,6 +210,98 @@ class _AppShellState extends State<AppShell> {
 
   @override
   Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < _wideLayoutBreakpoint) {
+          return _buildMobile(context);
+        }
+        return _buildDesktop(context);
+      },
+    );
+  }
+
+  Widget _buildMobile(BuildContext context) {
+    final combined = [..._entries]..sort((a, b) => a.label.compareTo(b.label));
+    return Scaffold(
+      backgroundColor: BullyPalette.of(context).bgPrimary,
+      appBar: AppBar(
+        backgroundColor: BullyPalette.of(context).bgPrimary,
+        title: Text(_mobileTab == 0 ? 'Чаты' : 'Настройки'),
+        actions: _mobileTab == 0
+            ? [
+                IconButton(icon: const Icon(Icons.person_add), tooltip: 'Новое сообщение', onPressed: _openNewDm),
+                IconButton(icon: const Icon(Icons.group_add), tooltip: 'Новая группа', onPressed: _openNewGroup),
+              ]
+            : null,
+      ),
+      body: IndexedStack(
+        index: _mobileTab,
+        children: [
+          _loading
+              ? const Center(child: CircularProgressIndicator())
+              : _loadError != null
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'Не удалось загрузить чаты:\n$_loadError',
+                              style: TextStyle(color: BullyPalette.of(context).textMuted, fontSize: 12),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 12),
+                            ElevatedButton(onPressed: _loadConversations, child: const Text('Повторить')),
+                          ],
+                        ),
+                      ),
+                    )
+                  : ListView(
+                      children: combined.map((e) {
+                        final avatarBytes = e.kind == 'dm' && e.peerUserId != null
+                            ? AppServices.of(context).avatars.peerAvatarBytes(e.peerUserId!)
+                            : null;
+                        return ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: BullyColors.blurple,
+                            backgroundImage: avatarBytes != null ? MemoryImage(avatarBytes) : null,
+                            child: avatarBytes == null
+                                ? Icon(e.kind == 'dm' ? Icons.person : Icons.group, color: Colors.white)
+                                : null,
+                          ),
+                          title: Text(e.label, style: TextStyle(color: BullyPalette.of(context).textNormal)),
+                          onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                            builder: (_) => e.kind == 'dm'
+                                ? DmChatScreen(
+                                    conversationId: e.conversationId,
+                                    peerUserId: e.peerUserId ?? '',
+                                    peerUsername: e.label,
+                                  )
+                                : GroupChatScreen(
+                                    conversationId: e.conversationId,
+                                    groupId: e.groupId!,
+                                    groupName: e.label,
+                                  ),
+                          )),
+                        );
+                      }).toList(),
+                    ),
+          const SettingsScreen(embedded: true),
+        ],
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _mobileTab,
+        onDestinationSelected: (i) => setState(() => _mobileTab = i),
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.chat_bubble_outline), selectedIcon: Icon(Icons.chat_bubble), label: 'Чаты'),
+          NavigationDestination(icon: Icon(Icons.settings_outlined), selectedIcon: Icon(Icons.settings), label: 'Настройки'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDesktop(BuildContext context) {
     return Scaffold(
       body: Row(
         children: [

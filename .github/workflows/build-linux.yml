@@ -1,0 +1,41 @@
+name: Build unsigned Linux
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'client/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux desktop build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev \
+            libsecret-1-dev libavahi-client-dev libjsoncpp-dev
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - run: flutter config --enable-linux-desktop
+
+      - run: flutter pub get
+
+      - run: flutter build linux --release
+
+      - name: Tar release bundle
+        run: tar -czf build/linux/x64/release/bully-linux.tar.gz -C build/linux/x64/release/bundle .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bully-linux
+          path: client/build/linux/x64/release/bully-linux.tar.gz

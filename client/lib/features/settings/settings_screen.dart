@@ -31,7 +31,8 @@ class _SettingsSection {
 }
 
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key});
+  final bool embedded;
+  const SettingsScreen({super.key, this.embedded = false});
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -106,13 +107,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       ];
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _body(BuildContext context) {
     final sections = _sections(context);
-    return Scaffold(
-      backgroundColor: BullyPalette.of(context).bgPrimary,
-      appBar: AppBar(backgroundColor: BullyPalette.of(context).bgPrimary, title: const Text('Настройки')),
-      body: LayoutBuilder(
+    return LayoutBuilder(
         builder: (context, constraints) {
           final wide = constraints.maxWidth >= _wideBreakpoint;
           if (!wide) {
@@ -174,7 +171,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ],
           );
         },
-      ),
+      );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.embedded) return _body(context);
+    return Scaffold(
+      backgroundColor: BullyPalette.of(context).bgPrimary,
+      appBar: AppBar(backgroundColor: BullyPalette.of(context).bgPrimary, title: const Text('Настройки')),
+      body: _body(context),
     );
   }
 }
