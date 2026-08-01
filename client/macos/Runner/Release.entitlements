@@ -2,8 +2,14 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- Sandbox disabled: without a real Apple Developer Team ID (paid or
+	     signed via Xcode), a sandboxed app cannot get Keychain access no
+	     matter what entitlements say — ad-hoc "-" signing has no team
+	     identity for the OS to grant it. Since this build is already
+	     unsigned/ad-hoc distributed, sandbox provides no real security
+	     boundary here anyway. -->
 	<key>com.apple.security.app-sandbox</key>
-	<true/>
+	<false/>
 	<key>com.apple.security.network.server</key>
 	<true/>
 	<key>com.apple.security.network.client</key>
