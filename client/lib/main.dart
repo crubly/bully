@@ -35,33 +35,21 @@ void main() async {
   runApp(const BullyApp());
 }
 
-class BullyApp extends StatelessWidget {
+/// AppServices must wrap the Navigator itself (via MaterialApp.builder), not
+/// just the first route's content — every screen reached via
+/// Navigator.push() is a SIBLING subtree of that first route, not a
+/// descendant of it, so AppServices.of(context) would fail with a null
+/// check on any pushed screen (Settings, DM chat, calls, everything)
+/// otherwise. This is why that used to crash silently in release builds
+/// (asserts are stripped, so the null-check throws with no debug message).
+class BullyApp extends StatefulWidget {
   const BullyApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: ThemeController.instance,
-      builder: (context, _) => MaterialApp(
-        title: 'Bully',
-        debugShowCheckedModeBanner: false,
-        themeMode: ThemeController.instance.mode,
-        theme: buildBullyTheme(Brightness.light),
-        darkTheme: buildBullyTheme(Brightness.dark),
-        home: const _Bootstrap(),
-      ),
-    );
-  }
+  State<BullyApp> createState() => _BullyAppState();
 }
 
-class _Bootstrap extends StatefulWidget {
-  const _Bootstrap();
-
-  @override
-  State<_Bootstrap> createState() => _BootstrapState();
-}
-
-class _BootstrapState extends State<_Bootstrap> {
+class _BullyAppState extends State<BullyApp> {
   BullyNode? _node;
   bool _checkingSavedNode = true;
 
@@ -88,16 +76,28 @@ class _BootstrapState extends State<_Bootstrap> {
 
   @override
   Widget build(BuildContext context) {
-    if (_checkingSavedNode) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
-    if (_node == null) {
-      return NodePickerScreen(onNodeReady: (node) => setState(() => _node = node));
-    }
-    return AppServices(
-      key: ValueKey(_node!.url),
-      nodeUrl: _node!.url,
-      child: const _RootRouter(),
+    final node = _node;
+    return ListenableBuilder(
+      listenable: ThemeController.instance,
+      builder: (context, _) => MaterialApp(
+        title: 'Bully',
+        debugShowCheckedModeBanner: false,
+        themeMode: ThemeController.instance.mode,
+        theme: buildBullyTheme(Brightness.light),
+        darkTheme: buildBullyTheme(Brightness.dark),
+        builder: node == null
+            ? null
+            : (context, child) => AppServices(
+                  key: ValueKey(node.url),
+                  nodeUrl: node.url,
+                  child: child!,
+                ),
+        home: _checkingSavedNode
+            ? const Scaffold(body: Center(child: CircularProgressIndicator()))
+            : node == null
+                ? NodePickerScreen(onNodeReady: (n) => setState(() => _node = n))
+                : const _RootRouter(),
+      ),
     );
   }
 }
