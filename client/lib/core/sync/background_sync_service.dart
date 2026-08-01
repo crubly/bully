@@ -35,24 +35,25 @@ class BackgroundSyncService {
     _broadcast = BonsoirBroadcast(
       service: BonsoirService(name: _selfServiceName!, type: _syncServiceType, port: _server!.port),
     );
-    await _broadcast!.ready;
+    await _broadcast!.initialize();
     await _broadcast!.start();
 
     _discovery = BonsoirDiscovery(type: _syncServiceType);
-    await _discovery!.ready;
+    await _discovery!.initialize();
     await _discovery!.start();
     _discovery!.eventStream?.listen((event) {
-      if (event.type == BonsoirDiscoveryEventType.discoveryServiceFound) {
-        event.service?.resolve(_discovery!.serviceResolver);
-      } else if (event.type == BonsoirDiscoveryEventType.discoveryServiceResolved) {
-        final resolved = event.service;
-        if (resolved is ResolvedBonsoirService && resolved.host != null && resolved.name != _selfServiceName) {
-          final key = '${resolved.host}:${resolved.port}';
-          _peers[key] = DiscoveredPeer(resolved.host!, resolved.port);
-          _ensureConnected(key, _peers[key]!);
-        }
+      switch (event) {
+        case BonsoirDiscoveryServiceFoundEvent(:final service):
+          service.resolve(_discovery!.serviceResolver);
+        case BonsoirDiscoveryServiceResolvedEvent(:final service):
+          if (service.hostAddresses.isNotEmpty && service.name != _selfServiceName) {
+            final key = '${service.hostAddresses.first}:${service.port}';
+            _peers[key] = DiscoveredPeer(service.hostAddresses.first, service.port);
+            _ensureConnected(key, _peers[key]!);
+          }
+        default:
+          break;
       }
-
     });
 
     _manifestTimer = Timer.periodic(_manifestInterval, (_) => _broadcastManifestToAll());

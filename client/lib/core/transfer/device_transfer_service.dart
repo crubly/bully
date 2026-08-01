@@ -45,7 +45,7 @@ class TransferHost {
       port: _server!.port,
     );
     _broadcast = BonsoirBroadcast(service: service);
-    await _broadcast!.ready;
+    await _broadcast!.initialize();
     await _broadcast!.start();
     _server!.listen(_handleConnection);
   }
@@ -97,16 +97,18 @@ class TransferJoin {
 
   Future<void> startDiscovery() async {
     _discovery = BonsoirDiscovery(type: bullyTransferServiceType);
-    await _discovery!.ready;
+    await _discovery!.initialize();
     await _discovery!.start();
     _discovery!.eventStream?.listen((event) {
-      if (event.type == BonsoirDiscoveryEventType.discoveryServiceFound) {
-        event.service?.resolve(_discovery!.serviceResolver);
-      } else if (event.type == BonsoirDiscoveryEventType.discoveryServiceResolved) {
-        final resolved = event.service;
-        if (resolved is ResolvedBonsoirService && resolved.host != null) {
-          _foundController.add(DiscoveredHost(resolved.name, resolved.host!, resolved.port));
-        }
+      switch (event) {
+        case BonsoirDiscoveryServiceFoundEvent(:final service):
+          service.resolve(_discovery!.serviceResolver);
+        case BonsoirDiscoveryServiceResolvedEvent(:final service):
+          if (service.hostAddresses.isNotEmpty) {
+            _foundController.add(DiscoveredHost(service.name, service.hostAddresses.first, service.port));
+          }
+        default:
+          break;
       }
     });
   }

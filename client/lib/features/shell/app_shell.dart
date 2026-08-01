@@ -74,7 +74,7 @@ class _AppShellState extends State<AppShell> {
   }
 
   Future<void> _pickAvatar() async {
-    final result = await FilePicker.platform.pickFiles(type: FileType.image, withData: true);
+    final result = await FilePicker.pickFiles(type: FileType.image, withData: true);
     final bytes = result?.files.single.bytes;
     if (bytes == null) return;
 
