@@ -26,8 +26,11 @@ jobs:
 
       - name: Ad-hoc sign the whole bundle (incl. nested frameworks)
         run: |
-          codesign --force --deep --sign - "build/macos/Build/Products/Release/Bully.app"
+          codesign --force --deep --sign - \
+            --entitlements macos/Runner/Release.entitlements \
+            "build/macos/Build/Products/Release/Bully.app"
           codesign --verify --deep --strict "build/macos/Build/Products/Release/Bully.app"
+          codesign -d --entitlements - "build/macos/Build/Products/Release/Bully.app"
 
       - name: Package DMG
         run: |
