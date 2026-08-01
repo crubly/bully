@@ -16,6 +16,16 @@ import 'theme/bully_theme.dart';
 import 'theme/theme_controller.dart';
 
 void main() async {
+  ErrorWidget.builder = (details) => Material(
+        color: Colors.red,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Text(
+            '${details.exception}\n\n${details.stack}',
+            style: const TextStyle(color: Colors.white, fontSize: 12),
+          ),
+        ),
+      );
   WidgetsFlutterBinding.ensureInitialized();
   await ChatHistoryStore.init();
   await NodeStore.init();
