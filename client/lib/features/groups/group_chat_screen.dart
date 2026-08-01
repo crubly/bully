@@ -37,6 +37,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
   String? _myUserId;
   List<String> _memberIds = [];
   bool _ready = false;
+  String? _initError;
 
   @override
   void initState() {
@@ -45,44 +46,50 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
   }
 
   Future<void> _init() async {
-    final services = AppServices.of(context);
-    await services.crypto.ensureIdentity();
-    _myUserId = await SecureStore.getUserId(services.api.baseUrl);
+    setState(() => _initError = null);
+    try {
+      final services = AppServices.of(context);
+      await services.crypto.ensureIdentity();
+      _myUserId = await SecureStore.getUserId(services.api.baseUrl);
 
-    _memberIds = (await services.api.conversationMembers(widget.conversationId)).cast<String>();
-    final otherMemberIds = _memberIds.where((id) => id != _myUserId).toList();
+      _memberIds = (await services.api.conversationMembers(widget.conversationId)).cast<String>();
+      final otherMemberIds = _memberIds.where((id) => id != _myUserId).toList();
 
-    await services.groupCrypto.restore(widget.groupId, otherMemberIds);
+      await services.groupCrypto.restore(widget.groupId, otherMemberIds);
 
-    final history = ChatHistoryStore.messagesFor(widget.conversationId);
-    _messages.addAll(history.map((m) => ChatMessage(m.senderId, m.text, m.isMine)));
+      final history = ChatHistoryStore.messagesFor(widget.conversationId);
+      _messages.clear();
+      _messages.addAll(history.map((m) => ChatMessage(m.senderId, m.text, m.isMine)));
 
-    _sub = services.ws.messages.listen((env) async {
-      if (env.type == 'direct' && env.conversationId.startsWith('group-kx:${widget.groupId}:')) {
-        await _handleDistribution(env);
-      } else if (env.type == 'message' &&
-          env.conversationId == widget.conversationId &&
-          !(env.messageId != null && ChatHistoryStore.messagesFor(widget.conversationId).any((m) => m.id == env.messageId))) {
+      _sub?.cancel();
+      _sub = services.ws.messages.listen((env) async {
+        if (env.type == 'direct' && env.conversationId.startsWith('group-kx:${widget.groupId}:')) {
+          await _handleDistribution(env);
+        } else if (env.type == 'message' &&
+            env.conversationId == widget.conversationId &&
+            !(env.messageId != null && ChatHistoryStore.messagesFor(widget.conversationId).any((m) => m.id == env.messageId))) {
+          await _handleInbound(env);
+        }
+      });
 
-        await _handleInbound(env);
+      if (!(await services.groupCrypto.hasPersistedOwnKey(widget.groupId))) {
+        final passphrase = await showSetPassphraseDialog(context, otherPartyLabel: 'участников группы');
+        if (passphrase == null) {
+          if (mounted) Navigator.of(context).pop();
+          return;
+        }
+        await services.groupCrypto.rekeyAndDistribute(
+          groupId: widget.groupId,
+          myUserId: _myUserId!,
+          otherMemberIds: otherMemberIds,
+          passphrase: passphrase,
+        );
       }
-    });
 
-    if (!(await services.groupCrypto.hasPersistedOwnKey(widget.groupId))) {
-      final passphrase = await showSetPassphraseDialog(context, otherPartyLabel: 'участников группы');
-      if (passphrase == null) {
-        if (mounted) Navigator.of(context).pop();
-        return;
-      }
-      await services.groupCrypto.rekeyAndDistribute(
-        groupId: widget.groupId,
-        myUserId: _myUserId!,
-        otherMemberIds: otherMemberIds,
-        passphrase: passphrase,
-      );
+      if (mounted) setState(() => _ready = true);
+    } catch (e) {
+      if (mounted) setState(() => _initError = '$e');
     }
-
-    setState(() => _ready = true);
   }
 
   Future<void> _handleDistribution(RelayEnvelope env) async {
@@ -212,7 +219,25 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                 ),
               ],
             )
-          : const Center(child: CircularProgressIndicator()),
+          : _initError != null
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Не удалось открыть чат:\n$_initError',
+                          style: TextStyle(color: BullyPalette.of(context).textMuted, fontSize: 12),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 12),
+                        ElevatedButton(onPressed: _init, child: const Text('Повторить')),
+                      ],
+                    ),
+                  ),
+                )
+              : const Center(child: CircularProgressIndicator()),
     );
   }
 }

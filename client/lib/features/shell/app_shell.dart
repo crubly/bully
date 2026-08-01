@@ -39,6 +39,7 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> {
   List<_ConversationEntry> _entries = [];
   bool _loading = true;
+  String? _loadError;
   StreamSubscription<IncomingCall>? _incomingCallSub;
   String? _myUsername;
   bool _micMuted = false;
@@ -52,9 +53,13 @@ class _AppShellState extends State<AppShell> {
   }
 
   Future<void> _loadCurrentUser() async {
-    final services = AppServices.of(context);
-    final username = await SecureStore.getUsername(services.api.baseUrl);
-    if (mounted) setState(() => _myUsername = username);
+    try {
+      final services = AppServices.of(context);
+      final username = await SecureStore.getUsername(services.api.baseUrl);
+      if (mounted) setState(() => _myUsername = username);
+    } catch (e) {
+      if (mounted) setState(() => _myUsername = '?');
+    }
   }
 
   void _toggleMic() {
@@ -99,37 +104,51 @@ class _AppShellState extends State<AppShell> {
   }
 
   Future<void> _loadConversations() async {
-    setState(() => _loading = true);
-    final services = AppServices.of(context);
-    final myId = await SecureStore.getUserId(services.api.baseUrl);
-    final raw = await services.api.listConversations();
-    final entries = <_ConversationEntry>[];
-    for (final c in raw) {
-      final id = c['id'] as String;
-      final kind = c['kind'] as String;
-      if (kind == 'dm') {
-        final members = (await services.api.conversationMembers(id)).cast<String>();
-        final peerId = members.firstWhere((m) => m != myId, orElse: () => members.first);
-        final peer = await services.api.getUser(peerId);
-        entries.add(_ConversationEntry(
-          conversationId: id,
-          kind: 'dm',
-          label: peer['username'] as String,
-          peerUserId: peerId,
-        ));
-      } else {
-        entries.add(_ConversationEntry(
-          conversationId: id,
-          kind: 'group',
-          groupId: c['group_id'] as String,
-          label: (c['group_name'] as String?) ?? 'Группа',
-        ));
+    setState(() {
+      _loading = true;
+      _loadError = null;
+    });
+    try {
+      final services = AppServices.of(context);
+      final myId = await SecureStore.getUserId(services.api.baseUrl);
+      final raw = await services.api.listConversations();
+      final entries = <_ConversationEntry>[];
+      for (final c in raw) {
+        final id = c['id'] as String;
+        final kind = c['kind'] as String;
+        if (kind == 'dm') {
+          final members = (await services.api.conversationMembers(id)).cast<String>();
+          final peerId = members.firstWhere((m) => m != myId, orElse: () => members.first);
+          final peer = await services.api.getUser(peerId);
+          entries.add(_ConversationEntry(
+            conversationId: id,
+            kind: 'dm',
+            label: peer['username'] as String,
+            peerUserId: peerId,
+          ));
+        } else {
+          entries.add(_ConversationEntry(
+            conversationId: id,
+            kind: 'group',
+            groupId: c['group_id'] as String,
+            label: (c['group_name'] as String?) ?? 'Группа',
+          ));
+        }
+      }
+      if (mounted) {
+        setState(() {
+          _entries = entries;
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _loadError = '$e';
+          _loading = false;
+        });
       }
     }
-    setState(() {
-      _entries = entries;
-      _loading = false;
-    });
   }
 
   Future<void> _openNewDm() async {
@@ -215,7 +234,25 @@ class _AppShellState extends State<AppShell> {
                 Expanded(
                   child: _loading
                       ? const Center(child: CircularProgressIndicator())
-                      : ListView(
+                      : _loadError != null
+                          ? Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(12),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      'Не удалось загрузить чаты:\n$_loadError',
+                                      style: TextStyle(color: BullyPalette.of(context).textMuted, fontSize: 12),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    ElevatedButton(onPressed: _loadConversations, child: const Text('Повторить')),
+                                  ],
+                                ),
+                              ),
+                            )
+                          : ListView(
                           children: _entries
                               .where((e) => e.kind == 'dm')
                               .map((e) => ListTile(

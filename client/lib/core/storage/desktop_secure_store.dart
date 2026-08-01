@@ -11,9 +11,21 @@ class DesktopSecureStore {
   static File? _dataFile;
   static Map<String, String> _cache = {};
   static bool _loaded = false;
+  static Future<void>? _loading;
+  static Future<void> _opChain = Future.value();
 
-  static Future<void> _ensureLoaded() async {
-    if (_loaded) return;
+  static Future<T> _serialized<T>(Future<T> Function() op) {
+    final result = _opChain.then((_) => op());
+    _opChain = result.then((_) {}, onError: (_) {});
+    return result;
+  }
+
+  static Future<void> _ensureLoaded() {
+    if (_loaded) return Future.value();
+    return _loading ??= _load();
+  }
+
+  static Future<void> _load() async {
     final dir = await getApplicationSupportDirectory();
     if (!await dir.exists()) await dir.create(recursive: true);
 
@@ -25,7 +37,10 @@ class DesktopSecureStore {
       _key = Uint8List.fromList(List.generate(32, (_) => random.nextInt(256)));
       await keyFile.writeAsString(base64Encode(_key!));
       if (!Platform.isWindows) {
-        await Process.run('chmod', ['600', keyFile.path]);
+        try {
+          await Process.run('chmod', ['600', keyFile.path]);
+        } catch (_) {
+        }
       }
     }
 
@@ -33,10 +48,12 @@ class DesktopSecureStore {
     if (await _dataFile!.exists()) {
       try {
         final bytes = await _dataFile!.readAsBytes();
-        final aead = AesGcm.with256bits();
-        final box = SecretBox.fromConcatenation(bytes, nonceLength: 12, macLength: 16);
-        final plaintext = await aead.decrypt(box, secretKey: SecretKey(_key!));
-        _cache = Map<String, String>.from(jsonDecode(utf8.decode(plaintext)) as Map);
+        if (bytes.isNotEmpty) {
+          final aead = AesGcm.with256bits();
+          final box = SecretBox.fromConcatenation(bytes, nonceLength: 12, macLength: 16);
+          final plaintext = await aead.decrypt(box, secretKey: SecretKey(_key!));
+          _cache = Map<String, String>.from(jsonDecode(utf8.decode(plaintext)) as Map);
+        }
       } catch (_) {
         _cache = {};
       }
@@ -51,25 +68,25 @@ class DesktopSecureStore {
     await _dataFile!.writeAsBytes(box.concatenation());
   }
 
-  static Future<void> write(String key, String value) async {
-    await _ensureLoaded();
-    _cache[key] = value;
-    await _persist();
-  }
+  static Future<void> write(String key, String value) => _serialized(() async {
+        await _ensureLoaded();
+        _cache[key] = value;
+        await _persist();
+      });
 
-  static Future<String?> read(String key) async {
-    await _ensureLoaded();
-    return _cache[key];
-  }
+  static Future<String?> read(String key) => _serialized(() async {
+        await _ensureLoaded();
+        return _cache[key];
+      });
 
-  static Future<void> delete(String key) async {
-    await _ensureLoaded();
-    _cache.remove(key);
-    await _persist();
-  }
+  static Future<void> delete(String key) => _serialized(() async {
+        await _ensureLoaded();
+        _cache.remove(key);
+        await _persist();
+      });
 
-  static Future<Map<String, String>> readAll() async {
-    await _ensureLoaded();
-    return Map.from(_cache);
-  }
+  static Future<Map<String, String>> readAll() => _serialized(() async {
+        await _ensureLoaded();
+        return Map.from(_cache);
+      });
 }

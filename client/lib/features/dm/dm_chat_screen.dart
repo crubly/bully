@@ -43,6 +43,7 @@ class _DmChatScreenState extends State<DmChatScreen> {
   StreamSubscription<RelayEnvelope>? _sub;
   String? _myUserId;
   bool _ready = false;
+  String? _initError;
 
   @override
   void initState() {
@@ -51,41 +52,47 @@ class _DmChatScreenState extends State<DmChatScreen> {
   }
 
   Future<void> _init() async {
-    final services = AppServices.of(context);
-    _myUserId = await SecureStore.getUserId(services.api.baseUrl);
+    setState(() => _initError = null);
+    try {
+      final services = AppServices.of(context);
+      _myUserId = await SecureStore.getUserId(services.api.baseUrl);
 
-    final history = ChatHistoryStore.messagesFor(widget.conversationId);
-    _messages.addAll(history.map((m) => ChatMessage(m.senderId, m.text, m.isMine)));
+      final history = ChatHistoryStore.messagesFor(widget.conversationId);
+      _messages.clear();
+      _messages.addAll(history.map((m) => ChatMessage(m.senderId, m.text, m.isMine)));
 
-    _sub = services.ws.messages.listen((env) async {
-      if (env.conversationId != widget.conversationId || env.type != 'message') return;
+      _sub?.cancel();
+      _sub = services.ws.messages.listen((env) async {
+        if (env.conversationId != widget.conversationId || env.type != 'message') return;
 
-      if (env.messageId != null && ChatHistoryStore.messagesFor(widget.conversationId).any((m) => m.id == env.messageId)) {
-        return;
+        if (env.messageId != null && ChatHistoryStore.messagesFor(widget.conversationId).any((m) => m.id == env.messageId)) {
+          return;
+        }
+        await _handleInbound(env);
+      });
+
+      if (!services.crypto.hasSession(widget.conversationId)) {
+        final passphrase = await showSetPassphraseDialog(context, otherPartyLabel: widget.peerUsername);
+        if (passphrase == null) {
+          if (mounted) Navigator.of(context).pop();
+          return;
+        }
+
+        final iAmInitiator = (_myUserId ?? '').compareTo(widget.peerUserId) < 0;
+        if (iAmInitiator) {
+          await services.crypto.startAsSender(
+            conversationId: widget.conversationId,
+            peerUserId: widget.peerUserId,
+            passphrase: passphrase,
+          );
+        } else {
+          await services.crypto.prepareAsReceiver(conversationId: widget.conversationId, passphrase: passphrase);
+        }
       }
-      await _handleInbound(env);
-    });
-
-    if (!services.crypto.hasSession(widget.conversationId)) {
-
-      final passphrase = await showSetPassphraseDialog(context, otherPartyLabel: widget.peerUsername);
-      if (passphrase == null) {
-        if (mounted) Navigator.of(context).pop();
-        return;
-      }
-
-      final iAmInitiator = (_myUserId ?? '').compareTo(widget.peerUserId) < 0;
-      if (iAmInitiator) {
-        await services.crypto.startAsSender(
-          conversationId: widget.conversationId,
-          peerUserId: widget.peerUserId,
-          passphrase: passphrase,
-        );
-      } else {
-        await services.crypto.prepareAsReceiver(conversationId: widget.conversationId, passphrase: passphrase);
-      }
+      if (mounted) setState(() => _ready = true);
+    } catch (e) {
+      if (mounted) setState(() => _initError = '$e');
     }
-    setState(() => _ready = true);
   }
 
   Future<void> _handleInbound(RelayEnvelope env) async {
@@ -203,7 +210,25 @@ class _DmChatScreenState extends State<DmChatScreen> {
                 ),
               ],
             )
-          : const Center(child: CircularProgressIndicator()),
+          : _initError != null
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Не удалось открыть чат:\n$_initError',
+                          style: TextStyle(color: BullyPalette.of(context).textMuted, fontSize: 12),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 12),
+                        ElevatedButton(onPressed: _init, child: const Text('Повторить')),
+                      ],
+                    ),
+                  ),
+                )
+              : const Center(child: CircularProgressIndicator()),
     );
   }
 }
