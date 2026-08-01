@@ -1,4 +1,5 @@
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:path_provider/path_provider.dart';
 
 class MessageRecord {
   final String id;
@@ -42,7 +43,8 @@ class ChatHistoryStore {
 
   static Future<void> init() async {
     if (_initialized) return;
-    await Hive.initFlutter('bully');
+    final dir = await getApplicationSupportDirectory();
+    Hive.init(dir.path);
     _box = await Hive.openBox('chat_messages');
     _initialized = true;
   }
