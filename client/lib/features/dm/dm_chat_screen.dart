@@ -59,12 +59,7 @@ class _DmChatScreenState extends State<DmChatScreen> {
 
     _sub = services.ws.messages.listen((env) async {
       if (env.conversationId != widget.conversationId || env.type != 'message') return;
-      // The relay replays a conversation's full history (up to 500 msgs) on
-      // every reconnect (see backend deliverOffline) rather than tracking
-      // per-device delivery. Skip anything we already have locally —
-      // running it through the ratchet again would desync the chain, since
-      // Double Ratchet can't decrypt a message once its chain has advanced
-      // past that position.
+
       if (env.messageId != null && ChatHistoryStore.messagesFor(widget.conversationId).any((m) => m.id == env.messageId)) {
         return;
       }
@@ -72,15 +67,13 @@ class _DmChatScreenState extends State<DmChatScreen> {
     });
 
     if (!services.crypto.hasSession(widget.conversationId)) {
-      // First time opening this chat on this device: ask for the shared
-      // passphrase (either to originate it, or to match what the peer set).
+
       final passphrase = await showSetPassphraseDialog(context, otherPartyLabel: widget.peerUsername);
       if (passphrase == null) {
         if (mounted) Navigator.of(context).pop();
         return;
       }
-      // Heuristic: whichever side has a lower user ID acts as the ratchet
-      // "sender" bootstrap so both peers agree on the same role deterministically.
+
       final iAmInitiator = (_myUserId ?? '').compareTo(widget.peerUserId) < 0;
       if (iAmInitiator) {
         await services.crypto.startAsSender(
@@ -135,9 +128,7 @@ class _DmChatScreenState extends State<DmChatScreen> {
       ciphertext: base64Encode(message.ciphertext),
       header: base64Encode(message.header),
     ));
-    // Own outgoing messages are never echoed back by the relay (it only
-    // forwards to the other party), so this device's own history is the
-    // only record until LAN sync mirrors it to this account's other devices.
+
     await ChatHistoryStore.append(MessageRecord(
       id: _uuid.v4(),
       conversationId: widget.conversationId,

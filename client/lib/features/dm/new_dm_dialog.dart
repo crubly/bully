@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../core/app_services.dart';
 import '../../theme/discord_theme.dart';
 
-/// Returns the picked user's {id, username} map, or null if cancelled.
 Future<Map<String, dynamic>?> showNewDmDialog(BuildContext context) async {
   final services = AppServices.of(context);
   final controller = TextEditingController();

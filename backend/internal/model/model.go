@@ -34,13 +34,11 @@ type GroupMember struct {
 
 type Conversation struct {
 	ID        string    `json:"id"`
-	Kind      string    `json:"kind"` // "dm" | "group"
+	Kind      string    `json:"kind"`
 	GroupID   *string   `json:"group_id,omitempty"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
-// Message is an opaque relay envelope. The server never inspects Ciphertext
-// or Header contents beyond routing them to conversation members.
 type Message struct {
 	ID             string    `json:"id"`
 	ConversationID string    `json:"conversation_id"`

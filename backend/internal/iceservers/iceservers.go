@@ -29,13 +29,6 @@ type iceServer struct {
 	Credential string   `json:"credential,omitempty"`
 }
 
-// Serve issues short-lived TURN credentials using coturn's standard
-// "TURN REST API" convention (username = expiry timestamp, password =
-// base64(HMAC-SHA1(secret, username))) so the shared TURN_SECRET itself
-// never has to reach the client. Calls are forced through this relay
-// (iceTransportPolicy: "relay" client-side) rather than attempted P2P, so a
-// LAN router only ever observes traffic to this trusted node, never the
-// other participant's IP.
 func (h *Handler) Serve(w http.ResponseWriter, r *http.Request) {
 	if auth.FromContext(r.Context()) == nil {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)

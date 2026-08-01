@@ -4,11 +4,6 @@ import '../../core/network/api_client.dart';
 import '../../core/node_store.dart';
 import '../../theme/discord_theme.dart';
 
-/// Shown before login (and reachable again from Settings to add another
-/// node): the user types a node's address, we verify it's actually a Bully
-/// node (GET /node/info) BEFORE ever showing a login form, and only then
-/// move on. Every account lives on exactly one node — different nodes are
-/// independent servers, not a federated pool.
 class NodePickerScreen extends StatefulWidget {
   final void Function(BullyNode node) onNodeReady;
   const NodePickerScreen({super.key, required this.onNodeReady});

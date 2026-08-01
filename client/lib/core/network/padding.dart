@@ -1,9 +1,6 @@
 import 'dart:math';
 import 'dart:typed_data';
 
-/// Dart mirror of the backend's internal/ws/padding.go frame format — see
-/// that file for the full rationale (constant-rate cover traffic so a
-/// network observer can't tell real messages from padding by timing/size).
 class WsPadding {
   static const frameSize = 2048;
   static const _headerBytes = 3;
@@ -40,8 +37,6 @@ class WsPadding {
     return frame;
   }
 
-  /// Returns null for frames that aren't well-formed real payload frames
-  /// (including cover/dummy frames, which callers should just discard).
   static ({Uint8List payload, bool hasMore})? decodeFrame(Uint8List frame) {
     if (frame.length != frameSize) return null;
     final flags = frame[0];
@@ -53,8 +48,6 @@ class WsPadding {
     return (payload: frame.sublist(_headerBytes, _headerBytes + length), hasMore: hasMore);
   }
 
-  /// Splits an arbitrary-length message into as many fixed-size frames as
-  /// needed, each carrying up to [maxPayloadPerFrame] bytes.
   static List<Uint8List> splitIntoFrames(Uint8List message) {
     if (message.isEmpty) return [encodeFrame(Uint8List(0), hasMore: false)];
     final frames = <Uint8List>[];

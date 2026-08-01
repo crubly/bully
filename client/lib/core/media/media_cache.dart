@@ -3,11 +3,6 @@ import 'dart:io';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 
-/// Settings + lifecycle for locally-cached media (photos/videos received in
-/// chats). NOTE: this build doesn't yet implement sending/receiving media
-/// messages — text chat only — so these settings and the sweep below have
-/// nothing to act on until that lands. The infrastructure is real and
-/// wired up so media support can hook into it directly.
 class MediaCache {
   static late Box _settings;
   static bool _initialized = false;
@@ -21,7 +16,6 @@ class MediaCache {
   static bool get autoSaveEnabled => (_settings.get('auto_save') as bool?) ?? false;
   static Future<void> setAutoSaveEnabled(bool value) => _settings.put('auto_save', value);
 
-  /// 0 means "never auto-delete".
   static int get autoDeleteAfterDays => (_settings.get('auto_delete_days') as int?) ?? 7;
   static Future<void> setAutoDeleteAfterDays(int days) => _settings.put('auto_delete_days', days);
 
@@ -32,10 +26,6 @@ class MediaCache {
     return dir;
   }
 
-  /// Deletes cached media files older than [autoDeleteAfterDays] from the
-  /// APP's own cache directory. This can never reach files the user chose
-  /// to save to their OS photo library / Downloads — once media leaves the
-  /// app's sandbox that way, only the user can delete it from there.
   static Future<int> sweep() async {
     if (autoDeleteAfterDays <= 0) return 0;
     final dir = await _cacheDir();

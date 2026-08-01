@@ -8,24 +8,14 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// TickInterval is how often a frame (real or cover) goes out in each
-// direction. Lower = less added latency but more constant bandwidth
-// overhead; this is the core privacy/cost tradeoff of constant-rate padding.
 const TickInterval = 200 * time.Millisecond
 
-// Conn wraps a single user's WebSocket connection with a buffered outbound
-// queue, framed and paced by padding.go so traffic timing/size stays
-// constant regardless of whether anything real is being sent.
 type Conn struct {
 	userID string
 	ws     *websocket.Conn
-	send   chan []byte // raw JSON envelope bytes, pre-fragmentation
+	send   chan []byte
 }
 
-// sendBufferSize is generous because the constant-rate pump only drains one
-// message per TickInterval — a burst (e.g. offline history replay on
-// reconnect) must queue reliably rather than get silently dropped just
-// because it can't all go out in the same instant.
 const sendBufferSize = 4096
 
 func NewConn(userID string, wsConn *websocket.Conn) *Conn {
@@ -45,14 +35,12 @@ func (c *Conn) Send(env Envelope) {
 	}
 }
 
-// WritePump emits exactly one frame per tick: the next fragment of a queued
-// message if there is one, otherwise a random-padded dummy frame.
 func (c *Conn) WritePump() {
 	defer c.ws.Close()
 	ticker := time.NewTicker(TickInterval)
 	defer ticker.Stop()
 
-	var pending []byte // bytes of the message currently being fragmented out
+	var pending []byte
 	for range ticker.C {
 		if len(pending) == 0 {
 			select {
@@ -85,9 +73,6 @@ func (c *Conn) WritePump() {
 	}
 }
 
-// ReadPump reassembles fixed-size frames back into full envelopes and hands
-// each complete one to handle. Dummy (cover) frames are silently dropped.
-// Returns when the connection closes.
 func (c *Conn) ReadPump(handle func(Envelope)) {
 	defer c.ws.Close()
 	var assembly []byte
@@ -97,14 +82,14 @@ func (c *Conn) ReadPump(handle func(Envelope)) {
 			return
 		}
 		if msgType != websocket.BinaryMessage || len(raw) != FrameSize {
-			continue // not a frame we understand — ignore rather than desync
+			continue
 		}
 		payload, isReal, hasMore, err := DecodeFrame(raw)
 		if err != nil {
 			continue
 		}
 		if !isReal {
-			continue // cover traffic
+			continue
 		}
 		assembly = append(assembly, payload...)
 		if hasMore {

@@ -1,7 +1,5 @@
 import 'package:hive_flutter/hive_flutter.dart';
 
-/// One persisted chat message. Stored decrypted (this is the whole point —
-/// history lives locally on-device, the server never keeps plaintext).
 class MessageRecord {
   final String id;
   final String conversationId;
@@ -38,9 +36,6 @@ class MessageRecord {
       );
 }
 
-/// Local-only chat history. Nothing here is ever sent to the relay server —
-/// it's read/written straight to an on-device Hive box, and is also what
-/// the LAN device-transfer/sync feature reads from and writes into.
 class ChatHistoryStore {
   static late Box _box;
   static bool _initialized = false;
@@ -59,14 +54,12 @@ class ChatHistoryStore {
 
   static Future<void> append(MessageRecord message) async {
     final existing = messagesFor(message.conversationId);
-    if (existing.any((m) => m.id == message.id)) return; // dedupe (offline replay / LAN sync)
+    if (existing.any((m) => m.id == message.id)) return;
     existing.add(message);
     existing.sort((a, b) => a.timestampMs.compareTo(b.timestampMs));
     await _box.put(message.conversationId, existing.map((m) => m.toMap()).toList());
   }
 
-  /// Merges a batch of records (e.g. from LAN sync) in one write, deduping
-  /// by message id.
   static Future<void> mergeAll(String conversationId, List<MessageRecord> incoming) async {
     final existing = messagesFor(conversationId);
     final seen = existing.map((m) => m.id).toSet();
@@ -77,7 +70,6 @@ class ChatHistoryStore {
 
   static List<String> allConversationIds() => _box.keys.cast<String>().toList();
 
-  /// Full local history export/import for the LAN device-transfer feature.
   static Map<String, List<Map<String, dynamic>>> exportAll() {
     return {
       for (final id in allConversationIds()) id: messagesFor(id).map((m) => m.toMap()).toList(),

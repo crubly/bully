@@ -3,14 +3,12 @@ import 'package:flutter/material.dart';
 import '../../core/app_services.dart';
 import '../../theme/discord_theme.dart';
 
-/// Returns the created group's {id, name, conversation_id}, or null if
-/// cancelled.
 Future<Map<String, dynamic>?> showNewGroupDialog(BuildContext context) async {
   final services = AppServices.of(context);
   final nameController = TextEditingController();
   final searchController = TextEditingController();
   List<dynamic> results = [];
-  final selected = <String, String>{}; // userId -> username
+  final selected = <String, String>{};
 
   final created = await showDialog<Map<String, dynamic>>(
     context: context,

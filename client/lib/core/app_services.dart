@@ -12,9 +12,6 @@ import 'network/ws_client.dart';
 import 'storage/secure_store.dart';
 import 'sync/background_sync_service.dart';
 
-/// Single set of long-lived service instances (API client, socket, crypto
-/// session managers), exposed to the widget tree via InheritedWidget so
-/// screens don't need a heavier DI framework.
 class AppServices extends InheritedWidget {
   final ApiClient api;
   final WsClient ws;
@@ -60,8 +57,6 @@ class AppServices extends InheritedWidget {
   bool updateShouldNotify(AppServices oldWidget) => false;
 }
 
-/// Call once after login/app-resume with a live WS connection: ensures the
-/// device identity exists, then starts LAN discovery/sync for this account.
 Future<void> startBackgroundSyncForCurrentAccount(AppServices services) async {
   await services.crypto.ensureIdentity();
   final userId = await SecureStore.getUserId(services.api.baseUrl);

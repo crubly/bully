@@ -15,8 +15,8 @@ import '../dm/dm_chat_screen.dart' show ChatMessage;
 const _uuid = Uuid();
 
 class GroupChatScreen extends StatefulWidget {
-  final String conversationId; // real group conversation id (persisted messages)
-  final String groupId; // groups.id, used to namespace sender-key sessions
+  final String conversationId;
+  final String groupId;
   final String groupName;
 
   const GroupChatScreen({
@@ -63,7 +63,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
       } else if (env.type == 'message' &&
           env.conversationId == widget.conversationId &&
           !(env.messageId != null && ChatHistoryStore.messagesFor(widget.conversationId).any((m) => m.id == env.messageId))) {
-        // See DmChatScreen for why replayed history must be skipped here.
+
         await _handleInbound(env);
       }
     });
@@ -86,10 +86,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
   }
 
   Future<void> _handleDistribution(RelayEnvelope env) async {
-    // We need the SAME passphrase used at group creation to bootstrap the
-    // pairwise control session the first time we see a given peer. If we
-    // already have that pairwise session cached locally, no prompt is
-    // needed — see GroupSessionManager.restore/_ensureKx.
+
     final services = AppServices.of(context);
     try {
       await services.groupCrypto.handleDistribution(
@@ -101,7 +98,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
         passphrase: await _passphraseForGroup(),
       );
     } catch (_) {
-      // Distribution from a peer we don't have a session with yet; ignore.
+
     }
   }
 

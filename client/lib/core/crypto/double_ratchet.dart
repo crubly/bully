@@ -5,10 +5,6 @@ import 'package:cryptography/cryptography.dart';
 
 import 'keys.dart';
 
-/// A message ready to send over the relay. [header] is NOT secret (it only
-/// carries the current ratchet public key and counters needed for the
-/// receiver to derive the same message key) — the server stores/relays it
-/// verbatim alongside [ciphertext] without being able to read either.
 class RatchetMessage {
   final Uint8List header;
   final Uint8List ciphertext;
@@ -36,10 +32,6 @@ class _MessageHeader {
   }
 }
 
-/// Signal-style Double Ratchet: a DH ratchet (X25519) mixed with a symmetric
-/// KDF chain (HMAC-SHA256) per message. Gives forward secrecy (past message
-/// keys are unrecoverable from later state) and post-compromise security
-/// (a fresh DH ratchet step heals the session even if a prior state leaked).
 class RatchetSession {
   Uint8List _rootKey;
   X25519KeyPair _dhSelf;
@@ -50,16 +42,12 @@ class RatchetSession {
   int _nr = 0;
   int _pn = 0;
 
-  /// Skipped message keys, keyed by "base64(dhRemote):n", to handle
-  /// out-of-order delivery over the relay.
   final Map<String, Uint8List> _skippedKeys = {};
 
   static const _maxSkip = 1000;
 
   RatchetSession._(this._rootKey, this._dhSelf);
 
-  /// The side that creates the conversation (has the peer's public key
-  /// available immediately) calls this to bootstrap as the "sender".
   static Future<RatchetSession> initAsSender({
     required Uint8List bootstrapSecret,
     required Uint8List peerPublicKey,
@@ -74,9 +62,6 @@ class RatchetSession {
     return session;
   }
 
-  /// The receiving side bootstraps without an immediate DH ratchet step;
-  /// it derives the matching receiving chain key on the first inbound
-  /// message once it learns the sender's ratchet public key from the header.
   static Future<RatchetSession> initAsReceiver({
     required Uint8List bootstrapSecret,
     required X25519KeyPair myKeyPair,
@@ -103,8 +88,7 @@ class RatchetSession {
     final header = _MessageHeader.decode(headerBytes);
 
     if (_dhRemote == null || !_bytesEqual(_dhRemote!, header.dhPublicKey)) {
-      // New DH ratchet public key from peer -> perform a DH ratchet step
-      // (this is what gives post-compromise security: the session heals).
+
       await _skipMessageKeys(header.previousChainLength);
       await _dhRatchetStep(header.dhPublicKey);
     }
@@ -184,8 +168,6 @@ class RatchetSession {
     return true;
   }
 
-  /// Serializes full session state for local secure storage so a
-  /// conversation survives app restarts. This never leaves the device.
   Future<Map<String, dynamic>> toJson() async {
     final keyPairData = await _dhSelf.keyPair.extractPrivateKeyBytes();
     return {

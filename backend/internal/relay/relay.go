@@ -17,8 +17,7 @@ import (
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  4096,
 	WriteBufferSize: 4096,
-	// Relay is opaque ciphertext; allow cross-origin so the Flutter web
-	// client (served from a different origin during dev) can connect.
+
 	CheckOrigin: func(r *http.Request) bool { return true },
 }
 
@@ -34,9 +33,6 @@ func NewHandler(db *pgxpool.Pool, hub *ws.Hub, convoHandler *convo.Handler, sess
 	return &Handler{DB: db, Hub: hub, Convo: convoHandler, Sessions: sessions, JWTSecret: jwtSecret}
 }
 
-// Serve upgrades the connection after validating the token passed as the
-// "token" query param (browsers can't set custom headers on the WS
-// handshake), then wires read/write pumps into the hub.
 func (h *Handler) Serve(w http.ResponseWriter, r *http.Request) {
 	tokenStr := r.URL.Query().Get("token")
 	claims, err := auth.ParseToken(h.JWTSecret, tokenStr)
@@ -69,11 +65,7 @@ func (h *Handler) Serve(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) handleInbound(ctx context.Context, env ws.Envelope) {
 	if env.Type == "direct" {
-		// Point-to-point control channel used for group Sender Key
-		// distribution: delivered straight to ToUserID, never persisted and
-		// not gated on conversation membership (the "conversation" here is a
-		// synthetic per-member-pair ID the clients agree on locally, not a
-		// real row). Payload is opaque ciphertext exactly like "message".
+
 		if env.ToUserID == "" {
 			return
 		}
@@ -81,10 +73,7 @@ func (h *Handler) handleInbound(ctx context.Context, env ws.Envelope) {
 		return
 	}
 	if env.Type == "call_signal" {
-		// Point-to-point WebRTC signaling (SDP/ICE), E2E encrypted by the
-		// client the same way chat messages are — the relay never persists
-		// it and never sees plaintext. Still gated on conversation
-		// membership so only actual contacts/group members can ring someone.
+
 		if env.ToUserID == "" {
 			return
 		}
@@ -132,8 +121,6 @@ func (h *Handler) handleInbound(ctx context.Context, env ws.Envelope) {
 	}
 }
 
-// deliverOffline replays any messages the connecting user missed while
-// disconnected, in conversations they belong to, oldest first.
 func (h *Handler) deliverOffline(ctx context.Context, userID string, conn *ws.Conn) {
 	rows, err := h.DB.Query(ctx, `
 		SELECT m.id, m.conversation_id, m.sender_id, m.ciphertext, m.header

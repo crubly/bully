@@ -31,11 +31,6 @@ class _SessionInfo {
       );
 }
 
-/// Lists active login sessions and lets the user kick them — individually
-/// or all-at-once — subject to the backend's 24h-old rule: the session
-/// making the request must itself be older than 24h before it can revoke
-/// anything (protects against a freshly stolen/created token immediately
-/// locking the real owner out of their other devices).
 class SessionsScreen extends StatefulWidget {
   const SessionsScreen({super.key});
 

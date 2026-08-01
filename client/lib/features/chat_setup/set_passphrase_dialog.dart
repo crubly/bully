@@ -2,11 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../theme/discord_theme.dart';
 
-/// Shown before the first message in a new DM/group. Returns the passphrase
-/// the user chose, or null if cancelled. The caller must have already told
-/// the human to share this passphrase with the other participant(s) through
-/// a different channel (voice call, in person, etc.) — the server never
-/// sees it.
 Future<String?> showSetPassphraseDialog(BuildContext context, {required String otherPartyLabel}) {
   final controller = TextEditingController();
   final confirmController = TextEditingController();

@@ -9,9 +9,6 @@ class BullyNode {
   static BullyNode fromMap(Map map) => BullyNode(map['name'] as String, map['url'] as String);
 }
 
-/// Local-only list of known Bully nodes (backend instances) plus which one
-/// is currently active. Node URLs aren't secret, so this lives in a plain
-/// Hive box rather than secure storage.
 class NodeStore {
   static late Box _box;
   static bool _initialized = false;

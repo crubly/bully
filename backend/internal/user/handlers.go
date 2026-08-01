@@ -24,7 +24,6 @@ type userInfo struct {
 	Username string `json:"username"`
 }
 
-// Search looks up users by exact or partial username, used to start a new DM.
 func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query().Get("q")
 	if q == "" {
@@ -51,8 +50,6 @@ func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(results)
 }
 
-// Get returns basic public info for a single user by id, used by clients
-// to render conversation lists (peer username, group member names).
 func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	var u userInfo

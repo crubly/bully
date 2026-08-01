@@ -13,9 +13,6 @@ import (
 
 var usernameRe = regexp.MustCompile(`^[a-zA-Z0-9_]{3,32}$`)
 
-// Sessions is satisfied by *session.Handler. Declared here (rather than
-// importing the session package) to avoid an import cycle, since session's
-// HTTP handlers need auth.FromContext.
 type Sessions interface {
 	Create(ctx context.Context, userID, deviceName, platform string) (string, error)
 	IsValid(ctx context.Context, sessionID, userID string) (bool, error)
@@ -144,7 +141,6 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, authResponse{Token: token, UserID: userID, Username: req.Username})
 }
 
-// Middleware validates the Bearer token and stashes claims in the request context.
 type contextKey string
 
 const ClaimsContextKey contextKey = "claims"

@@ -2,8 +2,6 @@ import 'dart:typed_data';
 
 import 'package:cryptography/cryptography.dart';
 
-/// Thin wrapper around an X25519 keypair, used both for the long-lived
-/// signed identity prekey and short-lived ephemeral/ratchet keys.
 class X25519KeyPair {
   final SimpleKeyPair keyPair;
   final Uint8List publicKeyBytes;
@@ -18,8 +16,6 @@ class X25519KeyPair {
     return X25519KeyPair._(pair, Uint8List.fromList(pub.bytes));
   }
 
-  /// Rebuilds a keypair handle from bytes previously persisted to secure
-  /// local storage (see [RatchetSession.toJson]/[fromJson]).
   static X25519KeyPair fromExisting(SimpleKeyPair keyPair, Uint8List publicKeyBytes) {
     return X25519KeyPair._(keyPair, publicKeyBytes);
   }
@@ -34,9 +30,6 @@ class X25519KeyPair {
   }
 }
 
-/// Standalone codec so callers outside this file (e.g. the identity keypair
-/// persisted by CryptoSessionManager) can rebuild a keypair from raw bytes
-/// without reaching into RatchetSession internals.
 class X25519KeyPairCodec {
   static X25519KeyPair fromBytes(Uint8List privateKeyBytes, Uint8List publicKeyBytes) {
     final keyPair = SimpleKeyPairData(

@@ -18,19 +18,6 @@ class IncomingCall {
   IncomingCall(this.conversationId, this.fromUserId, this.video);
 }
 
-/// Drives a single 1:1 WebRTC call at a time (group calls aren't in scope —
-/// see plan notes). Signaling (offer/answer/ICE) rides the same relay
-/// WsClient as chat, as a "call_signal" envelope whose payload is E2E
-/// encrypted with the conversation's Double Ratchet session exactly like a
-/// normal message, so the relay only ever sees opaque ciphertext, and it
-/// already inherits the constant-rate padding privacy of the WS channel.
-///
-/// Media itself never touches the relay: it's forced through this node's
-/// TURN server (iceTransportPolicy: "relay", see ApiClient.fetchIceServers)
-/// so a LAN router only sees traffic to a trusted node, never a direct
-/// stream to the other participant's IP. Audio is sent at a constant rate
-/// (DTX disabled, see sdp_privacy.dart) so packet timing can't reveal who's
-/// speaking when.
 class CallController {
   final ApiClient api;
   final WsClient ws;
@@ -139,9 +126,6 @@ class CallController {
     _reset();
   }
 
-  /// Desktop-only: WebRTC screen capture needs no native platform code
-  /// beyond getDisplayMedia, unlike mobile (which needs ReplayKit /
-  /// MediaProjection integration this build doesn't include).
   Future<void> toggleScreenShare({required bool enable}) async {
     if (!(Platform.isMacOS || Platform.isWindows || Platform.isLinux)) {
       throw UnsupportedError('Screen share needs native platform integration on mobile — desktop only for now.');
@@ -191,13 +175,13 @@ class CallController {
       final plaintext = await crypto.decrypt(env.conversationId, base64Decode(env.header!), base64Decode(env.ciphertext!));
       payload = jsonDecode(plaintext) as Map<String, dynamic>;
     } catch (_) {
-      return; // no session yet / undecryptable — drop
+      return;
     }
 
     switch (payload['kind']) {
       case 'offer':
         if (_state != CallState.idle) {
-          return; // already on a call — silently ignore (no call waiting in v1)
+          return;
         }
         _conversationId = env.conversationId;
         _peerUserId = env.fromUserId;

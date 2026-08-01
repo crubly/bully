@@ -11,10 +11,8 @@ import (
 
 const pubsubChannel = "bully:relay"
 
-// Envelope is the opaque relay unit: server routes it by ToUserID without
-// ever inspecting Ciphertext/Header contents.
 type Envelope struct {
-	Type           string `json:"type"` // "message" | "ack" | "presence"
+	Type           string `json:"type"`
 	ConversationID string `json:"conversation_id"`
 	FromUserID     string `json:"from_user_id"`
 	ToUserID       string `json:"to_user_id"`
@@ -23,14 +21,11 @@ type Envelope struct {
 	Header         string `json:"header,omitempty"`
 }
 
-// Hub tracks local WebSocket connections and fans out envelopes to the
-// right connection, using Redis pub/sub so multiple backend instances can
-// deliver to a user connected to a different instance.
 type Hub struct {
 	redis *redis.Client
 
 	mu    sync.RWMutex
-	conns map[string]*Conn // userID -> local connection
+	conns map[string]*Conn
 }
 
 func NewHub(rdb *redis.Client) *Hub {
@@ -57,9 +52,6 @@ func (h *Hub) localConn(userID string) *Conn {
 	return h.conns[userID]
 }
 
-// Deliver attempts local delivery first; if the target isn't connected to
-// this instance, publish via Redis so whichever instance holds their
-// connection can deliver it.
 func (h *Hub) Deliver(ctx context.Context, env Envelope) {
 	if c := h.localConn(env.ToUserID); c != nil {
 		c.Send(env)

@@ -8,12 +8,8 @@ import '../../core/app_services.dart';
 import '../../core/calls/call_controller.dart';
 import '../../theme/discord_theme.dart';
 
-/// Active call UI: local/remote video (or an avatar placeholder for
-/// audio-only), mute, hang up, and — desktop only — screen share. Also
-/// handles the outgoing "ringing..." and incoming "accept/decline" states
-/// so callers don't need a separate screen per state.
 class CallScreen extends StatefulWidget {
-  final IncomingCall? incoming; // null for an outgoing call already in progress
+  final IncomingCall? incoming;
   const CallScreen({super.key, this.incoming});
 
   @override
@@ -50,8 +46,7 @@ class _CallScreenState extends State<CallScreen> {
     _remoteSub = calls.remoteStream.listen((s) => setState(() => _remoteRenderer.srcObject = s));
 
     if (widget.incoming != null) {
-      // Rendered while the incoming dialog is still showing accept/decline;
-      // acceptCall() is triggered from there, not here.
+
     }
   }
 
@@ -127,7 +122,8 @@ class _CallScreenState extends State<CallScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   _controlButton(
-                    icon: _muted ? Icons.mic_off : Icons.mic,
+                    icon: Icons.mic,
+                    iconColor: _muted ? DiscordColors.danger : Colors.white,
                     onTap: _toggleMute,
                   ),
                   const SizedBox(width: 16),
@@ -159,11 +155,16 @@ class _CallScreenState extends State<CallScreen> {
         CallState.ended || CallState.idle => 'Завершено',
       };
 
-  Widget _controlButton({required IconData icon, required VoidCallback onTap, Color color = DiscordColors.bgSecondary}) {
+  Widget _controlButton({
+    required IconData icon,
+    required VoidCallback onTap,
+    Color color = DiscordColors.bgSecondary,
+    Color iconColor = Colors.white,
+  }) {
     return InkWell(
       onTap: onTap,
       customBorder: const CircleBorder(),
-      child: CircleAvatar(radius: 28, backgroundColor: color, child: Icon(icon, color: Colors.white)),
+      child: CircleAvatar(radius: 28, backgroundColor: color, child: Icon(icon, color: iconColor)),
     );
   }
 }

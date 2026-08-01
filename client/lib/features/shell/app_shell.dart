@@ -15,7 +15,7 @@ import '../settings/settings_screen.dart';
 
 class _ConversationEntry {
   final String conversationId;
-  final String kind; // "dm" | "group"
+  final String kind;
   final String? groupId;
   final String label;
   final String? peerUserId;
@@ -29,8 +29,6 @@ class _ConversationEntry {
   });
 }
 
-/// Discord-style shell: a narrow server/group rail on the left, a
-/// conversation list in the middle, and the active chat filling the rest.
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
 
@@ -42,12 +40,27 @@ class _AppShellState extends State<AppShell> {
   List<_ConversationEntry> _entries = [];
   bool _loading = true;
   StreamSubscription<IncomingCall>? _incomingCallSub;
+  String? _myUsername;
+  bool _micMuted = false;
 
   @override
   void initState() {
     super.initState();
     _loadConversations();
+    _loadCurrentUser();
     WidgetsBinding.instance.addPostFrameCallback((_) => _listenForIncomingCalls());
+  }
+
+  Future<void> _loadCurrentUser() async {
+    final services = AppServices.of(context);
+    final username = await SecureStore.getUsername(services.api.baseUrl);
+    if (mounted) setState(() => _myUsername = username);
+  }
+
+  void _toggleMic() {
+    setState(() => _micMuted = !_micMuted);
+
+    AppServices.of(context).calls.setMuted(_micMuted);
   }
 
   void _listenForIncomingCalls() {
@@ -182,13 +195,6 @@ class _AppShellState extends State<AppShell> {
                   onPressed: _openNewGroup,
                   tooltip: 'Новая группа',
                 ),
-                const Spacer(),
-                IconButton(
-                  icon: const CircleAvatar(backgroundColor: DiscordColors.bgSecondary, child: Icon(Icons.settings, color: DiscordColors.textMuted)),
-                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SettingsScreen())),
-                  tooltip: 'Настройки',
-                ),
-                const SizedBox(height: 12),
               ],
             ),
           ),
@@ -226,6 +232,12 @@ class _AppShellState extends State<AppShell> {
                               .toList(),
                         ),
                 ),
+                _UserBar(
+                  username: _myUsername,
+                  micMuted: _micMuted,
+                  onToggleMic: _toggleMic,
+                  onOpenSettings: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SettingsScreen())),
+                ),
               ],
             ),
           ),
@@ -236,6 +248,59 @@ class _AppShellState extends State<AppShell> {
                 child: Text('Выберите чат слева или начните новый', style: TextStyle(color: DiscordColors.textMuted)),
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _UserBar extends StatelessWidget {
+  final String? username;
+  final bool micMuted;
+  final VoidCallback onToggleMic;
+  final VoidCallback onOpenSettings;
+
+  const _UserBar({
+    required this.username,
+    required this.micMuted,
+    required this.onToggleMic,
+    required this.onOpenSettings,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 52,
+      color: DiscordColors.bgTertiary,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 16,
+            backgroundColor: DiscordColors.blurple,
+            child: Text(
+              (username?.isNotEmpty ?? false) ? username![0].toUpperCase() : '?',
+              style: const TextStyle(color: Colors.white, fontSize: 13),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              username ?? '...',
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: DiscordColors.textNormal, fontSize: 13, fontWeight: FontWeight.w600),
+            ),
+          ),
+          IconButton(
+            icon: Icon(Icons.mic, size: 18, color: micMuted ? DiscordColors.danger : DiscordColors.textMuted),
+            onPressed: onToggleMic,
+            tooltip: micMuted ? 'Включить микрофон' : 'Выключить микрофон',
+          ),
+          IconButton(
+            icon: const Icon(Icons.settings, size: 18, color: DiscordColors.textMuted),
+            onPressed: onOpenSettings,
+            tooltip: 'Настройки',
           ),
         ],
       ),

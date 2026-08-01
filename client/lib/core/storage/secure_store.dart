@@ -1,19 +1,7 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-/// Local-only storage for the account auth token and all ratchet/sender-key
-/// state. Nothing in here is ever sent to the server.
-///
-/// Auth/account identity is namespaced by node URL: each node is an
-/// independent server (not a federated pool), so a token issued by one node
-/// must never be replayed against another.
 class SecureStore {
-  // useDataProtectionKeyChain: false — the default (true) uses macOS's
-  // newer Data Protection Keychain, which refuses access to any process
-  // without a keychain-access-groups entitlement resolved against a real
-  // Apple Developer Team ID. Ad-hoc ("-") signed builds have no Team at
-  // all, so that path always fails with errSecMissingEntitlement (-34018)
-  // no matter what the entitlements file says. The legacy Keychain API
-  // this falls back to has no such requirement.
+
   static const _storage = FlutterSecureStorage(
     mOptions: MacOsOptions(useDataProtectionKeyChain: false),
   );
@@ -30,15 +18,10 @@ class SecureStore {
   static Future<String?> getUserId(String nodeUrl) => _storage.read(key: 'user_id:$nodeUrl');
   static Future<String?> getUsername(String nodeUrl) => _storage.read(key: 'username:$nodeUrl');
 
-  /// Ratchet/sender-key state is serialized to JSON by the calling code and
-  /// stored under a conversation- or member-scoped key.
   static Future<void> setBlob(String key, String json) => _storage.write(key: 'blob:$key', value: json);
   static Future<String?> getBlob(String key) => _storage.read(key: 'blob:$key');
   static Future<void> deleteBlob(String key) => _storage.delete(key: 'blob:$key');
 
-  /// All crypto-state blobs (identity keypair, DM ratchets, group Sender
-  /// Key sessions), keyed without the `blob:` prefix — used by the LAN
-  /// device-transfer feature to clone a device's full crypto state.
   static Future<Map<String, String>> exportAllBlobs() async {
     final all = await _storage.readAll();
     return {

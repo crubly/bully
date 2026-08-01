@@ -11,9 +11,6 @@ import (
 	"bully/backend/internal/auth"
 )
 
-// Handler manages X25519 PUBLIC prekeys only. Private keys never leave the
-// client; these bundles let a client start a Double Ratchet session with a
-// peer who is currently offline (X3DH-style async handshake).
 type Handler struct {
 	DB *pgxpool.Pool
 }
@@ -88,8 +85,6 @@ type bundleResponse struct {
 	OneTimePublic   *string `json:"one_time_public_key,omitempty"`
 }
 
-// Bundle fetches the target user's signed prekey plus (and consumes) one
-// unused one-time prekey, for a fresh async Double Ratchet handshake.
 func (h *Handler) Bundle(w http.ResponseWriter, r *http.Request) {
 	targetID := r.URL.Query().Get("user_id")
 	if targetID == "" {

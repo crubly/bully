@@ -3,9 +3,6 @@ import 'package:dio/dio.dart';
 import '../device_info.dart';
 import '../storage/secure_store.dart';
 
-/// Checks whether [nodeUrl] is a real Bully node before anything else
-/// touches it (used by the node-picker screen, so a wrong/unreachable
-/// address never even reaches the login screen).
 Future<String?> probeNode(String nodeUrl) async {
   try {
     final dio = Dio(BaseOptions(connectTimeout: const Duration(seconds: 5), receiveTimeout: const Duration(seconds: 5)));
@@ -100,10 +97,6 @@ class ApiClient {
     return resp.data as Map<String, dynamic>;
   }
 
-  /// Short-lived TURN credentials (see backend/internal/iceservers) — calls
-  /// force iceTransportPolicy "relay" through this node's TURN server so a
-  /// LAN router only ever sees traffic to a trusted node, never a direct
-  /// stream to the other participant's IP.
   Future<List<Map<String, dynamic>>> fetchIceServers() async {
     final resp = await _dio.get('/ice-servers');
     final servers = (resp.data as Map<String, dynamic>)['ice_servers'] as List;

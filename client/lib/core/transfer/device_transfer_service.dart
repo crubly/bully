@@ -11,12 +11,6 @@ import 'transfer_crypto.dart';
 
 const bullyTransferServiceType = '_bully-transfer._tcp';
 
-/// Full local state clone: identity keypair, every DM/group ratchet and
-/// sender-key session, and decrypted message history. See the "Полный клон"
-/// design decision — the new device becomes a byte-for-byte mirror of the
-/// source rather than a separate crypto identity, so it can decrypt this
-/// account's existing conversations (Double Ratchet state can't be
-/// reconstructed from the server, which only ever holds ciphertext).
 class TransferSnapshot {
   static Future<Map<String, dynamic>> capture() async => {
         'blobs': await SecureStore.exportAllBlobs(),
@@ -29,16 +23,12 @@ class TransferSnapshot {
   }
 }
 
-/// Runs on the device that ALREADY has chat data. Advertises itself over
-/// mDNS and waits for exactly one correctly-authenticated connection to
-/// pull a full snapshot.
 class TransferHost {
   ServerSocket? _server;
   BonsoirBroadcast? _broadcast;
   final String code = PairingCode.generate();
   final _doneController = StreamController<void>.broadcast();
 
-  /// Fires once a peer has successfully pulled the snapshot.
   Stream<void> get onTransferComplete => _doneController.stream;
 
   Future<void> start({required String deviceLabel}) async {
@@ -71,7 +61,7 @@ class TransferHost {
           _doneController.add(null);
         }
       } catch (_) {
-        // Wrong code (AEAD auth failure) or garbage input — silently drop.
+
       } finally {
         await sub.cancel();
         await socket.close();
@@ -93,9 +83,6 @@ class DiscoveredHost {
   DiscoveredHost(this.name, this.host, this.port);
 }
 
-/// Runs on the brand-new device. Browses for [TransferHost]s on the LAN,
-/// then pulls and applies a snapshot once the human enters the matching
-/// pairing code.
 class TransferJoin {
   BonsoirDiscovery? _discovery;
   final _foundController = StreamController<DiscoveredHost>.broadcast();
@@ -123,9 +110,6 @@ class TransferJoin {
     await _foundController.close();
   }
 
-  /// Connects to a discovered host, exchanges the pairing code, and applies
-  /// the returned snapshot locally. Throws if the code is wrong or the
-  /// connection fails.
   Future<void> pullSnapshot({required String host, required int port, required String code}) async {
     final socket = await Socket.connect(host, port, timeout: const Duration(seconds: 8));
     final key = await TransferCrypto.deriveKey(code);

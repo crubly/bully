@@ -22,8 +22,6 @@ func Connect(ctx context.Context, url string) (*pgxpool.Pool, error) {
 	return pool, nil
 }
 
-// Migrate applies the schema idempotently. Statements use CREATE TABLE/INDEX
-// IF NOT EXISTS, so this is safe to run on every startup.
 func Migrate(ctx context.Context, pool *pgxpool.Pool) error {
 	_, err := pool.Exec(ctx, schema)
 	if err != nil {

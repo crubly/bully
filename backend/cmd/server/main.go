@@ -24,7 +24,7 @@ import (
 	"bully/backend/internal/ws"
 )
 
-const maxRequestBody = 1 << 20 // 1 MiB — plenty for JSON API bodies, blocks payload-bomb DoS
+const maxRequestBody = 1 << 20
 
 func main() {
 	cfg := config.Load()
@@ -65,9 +65,6 @@ func main() {
 		w.Write([]byte("ok"))
 	})
 
-	// Public, unauthenticated: lets a client verify "is this address a real
-	// Bully node" and show a human-readable name before ever asking for
-	// credentials (see the client's node-picker screen).
 	r.Get("/node/info", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]any{
@@ -76,7 +73,7 @@ func main() {
 		})
 	})
 
-	authRateLimit := ratelimit.PerIP(rdb, "auth", 20, 60) // 20 attempts/min/IP
+	authRateLimit := ratelimit.PerIP(rdb, "auth", 20, 60)
 	r.With(authRateLimit).Post("/auth/register", authHandler.Register)
 	r.With(authRateLimit).Post("/auth/login", authHandler.Login)
 
@@ -97,17 +94,12 @@ func main() {
 		r.Get("/ice-servers", iceHandler.Serve)
 	})
 
-	// Token passed as a query param since the WS handshake can't carry a
-	// custom Authorization header from browsers; validated inside Serve.
 	r.Get("/ws", relayHandler.Serve)
 
 	server := &http.Server{
 		Addr:              ":" + cfg.Port,
 		Handler:           r,
 		ReadHeaderTimeout: 10 * time.Second,
-		// No global WriteTimeout/IdleTimeout: the WS endpoint holds
-		// long-lived connections by design (including the constant-rate
-		// padding heartbeat), which a blanket timeout would kill.
 	}
 
 	log.Printf("bully backend (%s) listening on :%s", cfg.NodeName, cfg.Port)

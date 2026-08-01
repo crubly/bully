@@ -4,11 +4,6 @@ import 'dart:typed_data';
 
 import 'padding.dart';
 
-/// Same constant-rate padded framing as [WsClient], applied to a raw
-/// point-to-point [Socket] instead of the relay WebSocket. Used by
-/// [BackgroundSyncService] so a LAN router watching two of this account's
-/// devices talk to each other can't tell, by timing or packet size, when a
-/// real sync actually happened versus the connection just idling.
 class PaddedSocket {
   static const tickInterval = Duration(milliseconds: 200);
 
@@ -30,8 +25,6 @@ class PaddedSocket {
     return PaddedSocket(socket);
   }
 
-  /// Yields the raw bytes of each reassembled message — callers own
-  /// serialization/encryption, this class only owns framing/pacing.
   Stream<Uint8List> get messages => _inbox.stream;
 
   void send(Uint8List payload) {
@@ -51,7 +44,7 @@ class PaddedSocket {
       _incomingBuffer.add(bytes.sublist(WsPadding.frameSize));
 
       final decoded = WsPadding.decodeFrame(frame);
-      if (decoded == null) continue; // cover frame
+      if (decoded == null) continue;
       _assembly.add(decoded.payload);
       if (decoded.hasMore) continue;
 

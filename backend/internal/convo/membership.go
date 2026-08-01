@@ -2,8 +2,6 @@ package convo
 
 import "context"
 
-// IsMember checks whether userID belongs to conversationID. Used to
-// authorize WebSocket message sends before relaying/persisting ciphertext.
 func IsMember(ctx context.Context, h *Handler, conversationID, userID string) (bool, error) {
 	var exists bool
 	err := h.DB.QueryRow(ctx,

@@ -5,12 +5,6 @@ import '../../core/node_store.dart';
 import '../../theme/discord_theme.dart';
 import '../nodes/node_picker_screen.dart';
 
-/// Shows the node this session is connected to (set at first launch, or via
-/// env NODE_NAME on a self-hosted node) plus every other node this device
-/// has ever connected to, with a way to add more. Switching the active node
-/// means switching account context entirely — Bully doesn't federate
-/// accounts across nodes — so it requires an app restart rather than a
-/// silent hot-swap of the live connection.
 class NodesScreen extends StatefulWidget {
   const NodesScreen({super.key});
 

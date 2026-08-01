@@ -10,9 +10,6 @@ import (
 	"golang.org/x/crypto/argon2"
 )
 
-// Argon2id parameters for hashing the ACCOUNT LOGIN password.
-// This is unrelated to the per-chat encryption passphrase, which never
-// reaches the server.
 const (
 	argonTime    = 1
 	argonMemory  = 64 * 1024

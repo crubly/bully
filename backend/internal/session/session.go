@@ -9,9 +9,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// MinAgeToKick is how old the ACTING session must be before it's allowed to
-// revoke any session (itself or others). Guards against a just-stolen or
-// just-created token being used to immediately lock the real owner out.
 const MinAgeToKick = 24 * time.Hour
 
 var ErrSessionTooNew = errors.New("session_too_new")
@@ -34,9 +31,6 @@ func (h *Handler) Create(ctx context.Context, userID, deviceName, platform strin
 	return id, err
 }
 
-// IsValid reports whether sessionID exists, belongs to userID, and hasn't
-// been revoked. Also bumps last_seen_at so the sessions list reflects
-// recent activity.
 func (h *Handler) IsValid(ctx context.Context, sessionID, userID string) (bool, error) {
 	var revoked bool
 	err := h.DB.QueryRow(ctx,
@@ -87,8 +81,6 @@ func (h *Handler) List(ctx context.Context, userID, currentSessionID string) ([]
 	return results, nil
 }
 
-// assertCanKick enforces MinAgeToKick on the ACTING session before any
-// revoke is allowed.
 func (h *Handler) assertCanKick(ctx context.Context, actingSessionID string) error {
 	var createdAt time.Time
 	err := h.DB.QueryRow(ctx, `SELECT created_at FROM sessions WHERE id = $1`, actingSessionID).Scan(&createdAt)
@@ -111,7 +103,6 @@ func (h *Handler) Revoke(ctx context.Context, userID, actingSessionID, targetSes
 	return err
 }
 
-// RevokeAllOthers kicks every session except the acting one.
 func (h *Handler) RevokeAllOthers(ctx context.Context, userID, actingSessionID string) error {
 	if err := h.assertCanKick(ctx, actingSessionID); err != nil {
 		return err

@@ -14,50 +14,19 @@ import '../transfer/transfer_crypto.dart';
 const _syncServiceType = '_bully-sync._tcp';
 const _manifestInterval = Duration(seconds: 5);
 
-/// Keeps this account's devices mirrored while they happen to share a LAN,
-/// with no human interaction after the initial device-transfer pairing.
-///
-/// Authentication/encryption key: every device that went through the
-/// "full clone" transfer holds an IDENTICAL identity keypair (see
-/// CryptoSessionManager / TransferSnapshot), so `sha256(identityPrivateKey)`
-/// is automatically the same secret on every device of this account and
-/// never needs to be re-entered or sent anywhere — it's simply derived
-/// locally on both ends.
-///
-/// Transport privacy: every peer connection is a [PaddedSocket] — a
-/// persistent, constant-rate, fixed-size-frame channel (see padding.dart).
-/// It stays open and ticking (real traffic or cover filler, indistinguishable
-/// by size/timing) for as long as the peer is reachable, specifically so a
-/// LAN router watching two of this account's devices can't tell, by timing
-/// or packet size, WHEN a sync actually carried new data versus just idling.
-/// The manifest/push payloads themselves are additionally AES-GCM encrypted
-/// with the sync key before framing, so even the padded connection's
-/// content (not just its cadence) is opaque to anyone without that key.
-///
-/// Sync scope: message history (union merge, dedup by id). Crypto session
-/// state (Double Ratchet / Sender Key blobs) is intentionally NOT
-/// auto-merged here — see the class-level limitation note below.
-///
-/// Known limitation: if two devices of the same account both send/receive
-/// messages independently on the SAME conversation while never in sync
-/// (e.g. two different networks), the ratchet state fork can only be
-/// resolved by picking one side as authoritative — the other side's
-/// post-fork sends may become undecryptable by the remote peer. This is an
-/// inherent tradeoff of the "shared identity clone" model chosen over
-/// separate per-device identities (see plan notes).
 class BackgroundSyncService {
   ServerSocket? _server;
   BonsoirBroadcast? _broadcast;
   BonsoirDiscovery? _discovery;
   Timer? _manifestTimer;
   Uint8List? _syncKey;
-  final _peers = <String, DiscoveredPeer>{}; // "$host:$port" -> peer
-  final _connections = <String, PaddedSocket>{}; // "$host:$port" -> live connection
+  final _peers = <String, DiscoveredPeer>{};
+  final _connections = <String, PaddedSocket>{};
   String? _selfServiceName;
 
   Future<void> start({required String userIdShortHash}) async {
     _syncKey = await _deriveSyncKey();
-    if (_syncKey == null) return; // no identity yet (not fully set up) — nothing to sync
+    if (_syncKey == null) return;
 
     _server = await ServerSocket.bind(InternetAddress.anyIPv4, 0);
     _server!.listen((socket) => _adopt('${socket.remoteAddress.address}:${socket.remotePort}', PaddedSocket(socket)));
@@ -83,8 +52,7 @@ class BackgroundSyncService {
           _ensureConnected(key, _peers[key]!);
         }
       }
-      // Lost-service events aren't tracked: a peer that goes offline just
-      // fails/closes its connection and gets retried on next discovery.
+
     });
 
     _manifestTimer = Timer.periodic(_manifestInterval, (_) => _broadcastManifestToAll());
@@ -107,7 +75,7 @@ class BackgroundSyncService {
       final socket = await PaddedSocket.connect(peer.host, peer.port);
       _adopt(key, socket);
     } catch (_) {
-      // Peer not reachable yet — the next discovery/manifest tick retries.
+
     }
   }
 
@@ -140,7 +108,7 @@ class BackgroundSyncService {
     try {
       conn.send(await TransferCrypto.encryptFrame(_syncKey!, payload));
     } catch (_) {
-      // Encryption never fails in practice; guard anyway rather than crash a timer callback.
+
     }
   }
 
@@ -170,7 +138,7 @@ class BackgroundSyncService {
     try {
       message = await TransferCrypto.decryptFrame(_syncKey!, bytes);
     } catch (_) {
-      return; // wrong account (key mismatch) or malformed peer — ignore
+      return;
     }
 
     switch (message['type']) {
@@ -178,9 +146,7 @@ class BackgroundSyncService {
         final theirManifest = Map<String, dynamic>.from(message['messages'] as Map? ?? {});
         final push = _computePush(theirManifest);
         if (push.isNotEmpty) {
-          // Reply on whichever connection this manifest arrived on isn't
-          // tracked per-message here, so push to every open connection —
-          // harmless no-op merges on peers that already have the data.
+
           for (final conn in _connections.values.toList()) {
             await _sendEncrypted(conn, {'type': 'push', 'data': push});
           }

@@ -28,9 +28,6 @@ type conversationResponse struct {
 	Kind string `json:"kind"`
 }
 
-// CreateDM creates (or returns existing) 1-on-1 conversation between the
-// caller and peer. No key material is exchanged here — that happens
-// end-to-end between the clients once both are members.
 func (h *Handler) CreateDM(w http.ResponseWriter, r *http.Request) {
 	claims := auth.FromContext(r.Context())
 	if claims == nil {
@@ -216,9 +213,6 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(results)
 }
 
-// Members returns the member IDs of a conversation, used by clients to know
-// who to run Double Ratchet / Sender Keys handshakes with. Only callers who
-// are themselves members may list them.
 func (h *Handler) Members(w http.ResponseWriter, r *http.Request) {
 	claims := auth.FromContext(r.Context())
 	if claims == nil {

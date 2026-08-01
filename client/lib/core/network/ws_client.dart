@@ -7,8 +7,6 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import 'bandwidth_tracker.dart';
 import 'padding.dart';
 
-/// A relay envelope exactly mirroring the backend's ws.Envelope — the
-/// server only ever sees `ciphertext`/`header` as opaque strings.
 class RelayEnvelope {
   final String type;
   final String conversationId;
@@ -47,24 +45,14 @@ class RelayEnvelope {
       };
 }
 
-/// Persistent WebSocket connection to the relay, with auto-reconnect.
-///
-/// Traffic is constant-rate padded (see padding.dart / backend's
-/// internal/ws/padding.go): exactly one fixed-size frame goes out every
-/// [WsPadding.frameSize]-sized tick regardless of whether there's a real
-/// message queued, so a network observer between this device and the node
-/// (a LAN router, an ISP, a Tailscale DERP relay) sees uniform traffic and
-/// can't tell a real event from cover traffic by timing or size. Callers
-/// subscribe to [messages] and never need to know about the underlying
-/// socket lifecycle or framing.
 class WsClient {
   static const _tickInterval = Duration(milliseconds: 200);
 
   final String baseUrl;
   WebSocketChannel? _channel;
   final _controller = StreamController<RelayEnvelope>.broadcast();
-  final _outbox = <Uint8List>[]; // queued raw JSON envelope bytes awaiting fragmentation/send
-  Uint8List? _pending; // bytes of the message currently being fragmented out
+  final _outbox = <Uint8List>[];
+  Uint8List? _pending;
   Timer? _pump;
   final _assembly = BytesBuilder();
   String? _token;
@@ -94,10 +82,10 @@ class WsClient {
   }
 
   void _handleFrame(dynamic raw) {
-    if (raw is! List<int>) return; // ignore anything that isn't a binary frame
+    if (raw is! List<int>) return;
     BandwidthTracker.recordReceived(raw.length);
     final decoded = WsPadding.decodeFrame(Uint8List.fromList(raw));
-    if (decoded == null) return; // cover/dummy frame — discard
+    if (decoded == null) return;
     _assembly.add(decoded.payload);
     if (decoded.hasMore) return;
 
@@ -106,7 +94,7 @@ class WsClient {
       final json = jsonDecode(utf8.decode(bytes)) as Map<String, dynamic>;
       _controller.add(RelayEnvelope.fromJson(json));
     } catch (_) {
-      // malformed reassembly — drop rather than crash the stream
+
     }
   }
 
@@ -140,9 +128,6 @@ class WsClient {
     });
   }
 
-  /// Queues an envelope for send; the fixed-rate pump drains it on the next
-  /// tick(s) rather than sending it immediately, so send() never itself
-  /// creates an observable off-cadence packet.
   void send(RelayEnvelope env) {
     _outbox.add(Uint8List.fromList(utf8.encode(jsonEncode(env.toOutboundJson()))));
   }

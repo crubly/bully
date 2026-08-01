@@ -7,16 +7,6 @@ import 'double_ratchet.dart';
 import 'kdf.dart';
 import 'keys.dart';
 
-/// Owns the local long-term identity keypair (uploaded as the signed
-/// prekey) and every conversation's Double Ratchet session. This is the
-/// glue between the crypto primitives, local storage, and the API client —
-/// nothing here ever sends key material to the server, only public keys
-/// and opaque ciphertext.
-///
-/// Simplification vs. full X3DH: the handshake uses only the peer's
-/// long-term signed identity key (not one-time prekeys) as the DH ratchet
-/// partner for session bootstrap. One-time prekeys are still stored
-/// server-side for future hardening but unused by this client build.
 class CryptoSessionManager {
   final ApiClient api;
   X25519KeyPair? _identity;
@@ -24,9 +14,6 @@ class CryptoSessionManager {
 
   CryptoSessionManager(this.api);
 
-  /// The device's long-term identity keypair, used both for DM handshakes
-  /// and as the DH partner for group Sender Key distribution sessions.
-  /// Callers must have awaited [ensureIdentity] at least once first.
   X25519KeyPair get identity => _identity!;
 
   Future<void> ensureIdentity() async {
@@ -42,7 +29,7 @@ class CryptoSessionManager {
     await api.uploadPrekeys({
       'signed_key_id': 1,
       'signed_public_key': base64Encode(_identity!.publicKeyBytes),
-      'signature': '', // MVP: no separate signing key; transport is authenticated by TLS + account auth.
+      'signature': '',
       'one_time_keys': [],
     });
   }
@@ -56,16 +43,13 @@ class CryptoSessionManager {
   }
 
   Future<X25519KeyPair> _loadIdentityFromJson(Map<String, dynamic> json) async {
-    // Reuses RatchetSession's private-key reconstruction path via keys.dart.
+
     return X25519KeyPairCodec.fromBytes(
       base64Decode(json['private'] as String),
       base64Decode(json['public'] as String),
     );
   }
 
-  /// Called by the side that starts the conversation (after both humans
-  /// have agreed on [passphrase] out-of-band). Fetches the peer's public
-  /// identity key from the server and bootstraps the ratchet as sender.
   Future<void> startAsSender({
     required String conversationId,
     required String peerUserId,
@@ -84,8 +68,6 @@ class CryptoSessionManager {
     await _persistSession(conversationId, session);
   }
 
-  /// Called by the peer once they've entered the same passphrase, before
-  /// the first inbound message is decrypted.
   Future<void> prepareAsReceiver({
     required String conversationId,
     required String passphrase,

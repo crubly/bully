@@ -3,16 +3,6 @@ import 'dart:typed_data';
 
 import 'package:cryptography/cryptography.dart';
 
-/// Signal/WhatsApp-style "Sender Keys" group encryption: every member has
-/// their own sending chain, distributed to the rest of the group over each
-/// member's pairwise Double Ratchet DM session (so the sender key itself is
-/// never seen by the relay server). Message encryption is then O(1) instead
-/// of O(n) pairwise encryptions per group message.
-///
-/// Post-compromise security for groups comes from re-keying (calling
-/// [SenderKeyState.generate] again and redistributing) whenever membership
-/// changes, not from a per-message DH ratchet — the same tradeoff Signal
-/// groups make, since a full pairwise DH ratchet per message doesn't scale.
 class SenderKeyState {
   Uint8List chainKey;
   int iteration;
@@ -49,8 +39,7 @@ class GroupCiphertext {
 }
 
 class SenderKeyCipher {
-  /// Encrypts with the local member's own [SenderKeyState], advancing its
-  /// chain forward (forward secrecy within the group session).
+
   static Future<GroupCiphertext> encrypt(SenderKeyState state, Uint8List plaintext) async {
     final iteration = state.iteration;
     final key = await state._stepAndGetMessageKey();
@@ -59,9 +48,6 @@ class SenderKeyCipher {
     return GroupCiphertext(iteration, Uint8List.fromList(box.concatenation()));
   }
 
-  /// Decrypts a message from another member's sender key chain. Callers must
-  /// fast-forward [state] to the message's iteration if it has fallen
-  /// behind (messages can arrive out of order over the relay).
   static Future<Uint8List> decrypt(SenderKeyState state, int iteration, Uint8List ciphertext) async {
     while (state.iteration < iteration) {
       await state._stepAndGetMessageKey();

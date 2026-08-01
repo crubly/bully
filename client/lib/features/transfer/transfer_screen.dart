@@ -8,10 +8,6 @@ import '../../core/storage/secure_store.dart';
 import '../../core/transfer/device_transfer_service.dart';
 import '../../theme/discord_theme.dart';
 
-/// "Перенести чаты" flow: either show a pairing code as the source device
-/// (which already has chat data), or scan the LAN for a source and pull its
-/// snapshot as the freshly-installed target device. Both devices must
-/// already be logged into the same account and on the same local network.
 class TransferScreen extends StatefulWidget {
   const TransferScreen({super.key});
 

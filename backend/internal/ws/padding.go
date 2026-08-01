@@ -6,19 +6,6 @@ import (
 	"errors"
 )
 
-// Frame layout (fixed FrameSize bytes total, sent as one binary WS message):
-//
-//	byte 0     : flags — bit0 = isReal (0 = cover/dummy traffic), bit1 = hasMore fragments
-//	bytes 1-2  : uint16 BE payload length in THIS frame
-//	bytes 3..  : payload bytes, then random padding out to FrameSize
-//
-// Every tick, in both directions, exactly one frame goes out — real data if
-// there's a queued message (fragmented across ticks if it doesn't fit), a
-// random-padded dummy frame otherwise. To anyone on the network path who
-// can see packet timing/size but not content (a LAN router, an ISP, a
-// Tailscale DERP relay when it can't establish direct P2P), every tick
-// looks identical whether or not a message was actually relayed at that
-// moment.
 const (
 	FrameSize          = 2048
 	frameHeaderBytes   = 3
@@ -30,9 +17,6 @@ const (
 
 var errPayloadTooLarge = errors.New("payload exceeds one frame and fragmentation slice is wrong")
 
-// EncodeFrame builds one fixed-size frame carrying up to MaxPayloadPerFrame
-// bytes of payload. hasMore indicates more fragments of the same logical
-// message follow on subsequent ticks.
 func EncodeFrame(payload []byte, hasMore bool) ([]byte, error) {
 	if len(payload) > MaxPayloadPerFrame {
 		return nil, errPayloadTooLarge
@@ -51,9 +35,6 @@ func EncodeFrame(payload []byte, hasMore bool) ([]byte, error) {
 	return frame, nil
 }
 
-// DummyFrame builds one fixed-size frame of pure random padding — bitwise
-// indistinguishable in size from a real frame, with isReal=0 so the
-// receiver discards it without touching the fragment-assembly buffer.
 func DummyFrame() ([]byte, error) {
 	frame := make([]byte, FrameSize)
 	if _, err := rand.Read(frame); err != nil {
@@ -63,7 +44,6 @@ func DummyFrame() ([]byte, error) {
 	return frame, nil
 }
 
-// DecodeFrame extracts (payload, isReal, hasMore) from one fixed-size frame.
 func DecodeFrame(frame []byte) (payload []byte, isReal bool, hasMore bool, err error) {
 	if len(frame) != FrameSize {
 		return nil, false, false, errors.New("unexpected frame size")
@@ -79,8 +59,6 @@ func DecodeFrame(frame []byte) (payload []byte, isReal bool, hasMore bool, err e
 	return payload, isReal, hasMore, nil
 }
 
-// SplitIntoFrames fragments an arbitrary-length message across as many
-// fixed-size frames as needed.
 func SplitIntoFrames(message []byte) ([][]byte, error) {
 	if len(message) == 0 {
 		frame, err := EncodeFrame(nil, false)

@@ -35,9 +35,7 @@ func IssueToken(secret, userID, username, sessionID string) (string, error) {
 func ParseToken(secret, tokenStr string) (*Claims, error) {
 	claims := &Claims{}
 	token, err := jwt.ParseWithClaims(tokenStr, claims, func(t *jwt.Token) (interface{}, error) {
-		// Without this check, a token signed with "alg: none" or a
-		// different algorithm the caller controls could bypass signature
-		// verification entirely (the classic JWT alg-confusion attack).
+
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, errUnexpectedSigningMethod
 		}

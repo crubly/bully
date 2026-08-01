@@ -37,10 +37,6 @@ class BullyApp extends StatelessWidget {
   }
 }
 
-/// Every account lives on exactly one node (see NodePickerScreen), so the
-/// resolved node URL must be known BEFORE AppServices (and its ApiClient/
-/// WsClient) can be constructed. This widget owns that one piece of
-/// bootstrap state; everything under it gets a real AppServices.
 class _Bootstrap extends StatefulWidget {
   const _Bootstrap();
 
@@ -89,8 +85,6 @@ class _BootstrapState extends State<_Bootstrap> {
   }
 }
 
-/// Sends the user to the auth screen or straight into the app shell
-/// depending on whether a token is already stored locally.
 class _RootRouter extends StatefulWidget {
   const _RootRouter();
 
