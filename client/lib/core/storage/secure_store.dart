@@ -7,7 +7,16 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 /// independent server (not a federated pool), so a token issued by one node
 /// must never be replayed against another.
 class SecureStore {
-  static const _storage = FlutterSecureStorage();
+  // useDataProtectionKeyChain: false — the default (true) uses macOS's
+  // newer Data Protection Keychain, which refuses access to any process
+  // without a keychain-access-groups entitlement resolved against a real
+  // Apple Developer Team ID. Ad-hoc ("-") signed builds have no Team at
+  // all, so that path always fails with errSecMissingEntitlement (-34018)
+  // no matter what the entitlements file says. The legacy Keychain API
+  // this falls back to has no such requirement.
+  static const _storage = FlutterSecureStorage(
+    mOptions: MacOsOptions(useDataProtectionKeyChain: false),
+  );
 
   static Future<void> setAuthToken(String nodeUrl, String token) => _storage.write(key: 'auth_token:$nodeUrl', value: token);
   static Future<String?> getAuthToken(String nodeUrl) => _storage.read(key: 'auth_token:$nodeUrl');
