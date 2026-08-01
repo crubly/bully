@@ -32,7 +32,8 @@ class _SessionInfo {
 }
 
 class SessionsScreen extends StatefulWidget {
-  const SessionsScreen({super.key});
+  final bool embedded;
+  const SessionsScreen({super.key, this.embedded = false});
 
   @override
   State<SessionsScreen> createState() => _SessionsScreenState();
@@ -91,8 +92,60 @@ class _SessionsScreenState extends State<SessionsScreen> {
     }
   }
 
+  Widget _body(BuildContext context) {
+    return _loading
+        ? const Center(child: CircularProgressIndicator())
+        : Column(
+            children: [
+              if (_error != null)
+                Padding(padding: const EdgeInsets.all(12), child: Text(_error!, style: const TextStyle(color: BullyColors.danger))),
+              Expanded(
+                child: ListView(
+                  children: _sessions
+                      .map((s) => ListTile(
+                            leading: Icon(_iconFor(s.platform), color: BullyColors.blurple),
+                            title: Text(
+                              '${s.deviceName}${s.current ? ' (это устройство)' : ''}',
+                              style: TextStyle(color: BullyPalette.of(context).textNormal),
+                            ),
+                            subtitle: Text(
+                              'Платформа: ${s.platform} · последняя активность: ${_formatAgo(s.lastSeenAt)}',
+                              style: TextStyle(color: BullyPalette.of(context).textMuted),
+                            ),
+                            trailing: s.current
+                                ? null
+                                : IconButton(
+                                    icon: const Icon(Icons.logout, color: BullyColors.danger),
+                                    onPressed: () => _revoke(s.id),
+                                    tooltip: 'Кикнуть сессию',
+                                  ),
+                          ))
+                      .toList(),
+                ),
+              ),
+            ],
+          );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (widget.embedded) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                Expanded(child: Text('Сессии', style: TextStyle(color: BullyPalette.of(context).textNormal, fontSize: 20, fontWeight: FontWeight.bold))),
+                TextButton(onPressed: _revokeAll, child: const Text('Выйти на всех, кроме этого')),
+              ],
+            ),
+          ),
+          Expanded(child: _body(context)),
+        ],
+      );
+    }
     return Scaffold(
       backgroundColor: BullyPalette.of(context).bgPrimary,
       appBar: AppBar(
@@ -102,38 +155,7 @@ class _SessionsScreenState extends State<SessionsScreen> {
           TextButton(onPressed: _revokeAll, child: const Text('Выйти на всех, кроме этого')),
         ],
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                if (_error != null)
-                  Padding(padding: const EdgeInsets.all(12), child: Text(_error!, style: const TextStyle(color: BullyColors.danger))),
-                Expanded(
-                  child: ListView(
-                    children: _sessions
-                        .map((s) => ListTile(
-                              leading: Icon(_iconFor(s.platform), color: BullyColors.blurple),
-                              title: Text(
-                                '${s.deviceName}${s.current ? ' (это устройство)' : ''}',
-                                style: TextStyle(color: BullyPalette.of(context).textNormal),
-                              ),
-                              subtitle: Text(
-                                'Платформа: ${s.platform} · последняя активность: ${_formatAgo(s.lastSeenAt)}',
-                                style: TextStyle(color: BullyPalette.of(context).textMuted),
-                              ),
-                              trailing: s.current
-                                  ? null
-                                  : IconButton(
-                                      icon: const Icon(Icons.logout, color: BullyColors.danger),
-                                      onPressed: () => _revoke(s.id),
-                                      tooltip: 'Кикнуть сессию',
-                                    ),
-                            ))
-                        .toList(),
-                  ),
-                ),
-              ],
-            ),
+      body: _body(context),
     );
   }
 

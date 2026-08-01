@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:bonsoir/bonsoir.dart';
 
+import '../avatar/avatar_store.dart';
 import '../storage/chat_history_store.dart';
 import '../storage/secure_store.dart';
 import 'pairing_code.dart';
@@ -15,11 +16,16 @@ class TransferSnapshot {
   static Future<Map<String, dynamic>> capture() async => {
         'blobs': await SecureStore.exportAllBlobs(),
         'messages': ChatHistoryStore.exportAll(),
+        'avatars': AvatarStore.exportAll(),
       };
 
   static Future<void> apply(Map<String, dynamic> snapshot) async {
     await SecureStore.importAllBlobs(Map<String, String>.from(snapshot['blobs'] as Map));
     await ChatHistoryStore.importAll(Map<String, dynamic>.from(snapshot['messages'] as Map));
+    final avatars = snapshot['avatars'] as Map?;
+    if (avatars != null) {
+      await AvatarStore.importAll(Map<String, dynamic>.from(avatars));
+    }
   }
 }
 

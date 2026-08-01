@@ -41,6 +41,7 @@ class _DmChatScreenState extends State<DmChatScreen> {
   final _messages = <ChatMessage>[];
   final _input = TextEditingController();
   StreamSubscription<RelayEnvelope>? _sub;
+  StreamSubscription<String>? _avatarSub;
   String? _myUserId;
   bool _ready = false;
   String? _initError;
@@ -89,6 +90,12 @@ class _DmChatScreenState extends State<DmChatScreen> {
           await services.crypto.prepareAsReceiver(conversationId: widget.conversationId, passphrase: passphrase);
         }
       }
+      unawaited(services.avatars.shareWithPeer(conversationId: widget.conversationId, peerUserId: widget.peerUserId));
+      _avatarSub?.cancel();
+      _avatarSub = services.avatars.onPeerAvatarUpdated.listen((userId) {
+        if (userId == widget.peerUserId && mounted) setState(() {});
+      });
+
       if (mounted) setState(() => _ready = true);
     } catch (e) {
       if (mounted) setState(() => _initError = '$e');
@@ -153,6 +160,7 @@ class _DmChatScreenState extends State<DmChatScreen> {
   @override
   void dispose() {
     _sub?.cancel();
+    _avatarSub?.cancel();
     super.dispose();
   }
 
@@ -162,7 +170,14 @@ class _DmChatScreenState extends State<DmChatScreen> {
       backgroundColor: BullyPalette.of(context).bgPrimary,
       appBar: AppBar(
         backgroundColor: BullyPalette.of(context).bgPrimary,
-        title: Text('@${widget.peerUsername}'),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _PeerAvatar(peerUserId: widget.peerUserId, label: widget.peerUsername),
+            const SizedBox(width: 10),
+            Text('@${widget.peerUsername}'),
+          ],
+        ),
         actions: [
           IconButton(icon: const Icon(Icons.call), tooltip: 'Аудиозвонок', onPressed: () => _startCall(video: false)),
           IconButton(icon: const Icon(Icons.videocam), tooltip: 'Видеозвонок', onPressed: () => _startCall(video: true)),
@@ -229,6 +244,23 @@ class _DmChatScreenState extends State<DmChatScreen> {
                   ),
                 )
               : const Center(child: CircularProgressIndicator()),
+    );
+  }
+}
+
+class _PeerAvatar extends StatelessWidget {
+  final String peerUserId;
+  final String label;
+  const _PeerAvatar({required this.peerUserId, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    final bytes = AppServices.of(context).avatars.peerAvatarBytes(peerUserId);
+    return CircleAvatar(
+      radius: 14,
+      backgroundColor: BullyColors.blurple,
+      backgroundImage: bytes != null ? MemoryImage(bytes) : null,
+      child: bytes == null ? Text(label.isNotEmpty ? label[0].toUpperCase() : '?', style: const TextStyle(fontSize: 12, color: Colors.white)) : null,
     );
   }
 }

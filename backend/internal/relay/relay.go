@@ -72,14 +72,14 @@ func (h *Handler) handleInbound(ctx context.Context, env ws.Envelope) {
 		h.Hub.Deliver(ctx, env)
 		return
 	}
-	if env.Type == "call_signal" {
+	if env.Type == "call_signal" || env.Type == "avatar" {
 
 		if env.ToUserID == "" {
 			return
 		}
 		isMember, err := convo.IsMember(ctx, h.Convo, env.ConversationID, env.FromUserID)
 		if err != nil || !isMember {
-			log.Printf("relay: rejected call_signal from %s (not a member of %s)", env.FromUserID, env.ConversationID)
+			log.Printf("relay: rejected %s from %s (not a member of %s)", env.Type, env.FromUserID, env.ConversationID)
 			return
 		}
 		h.Hub.Deliver(ctx, env)

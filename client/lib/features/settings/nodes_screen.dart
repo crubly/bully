@@ -6,7 +6,8 @@ import '../../theme/bully_theme.dart';
 import '../nodes/node_picker_screen.dart';
 
 class NodesScreen extends StatefulWidget {
-  const NodesScreen({super.key});
+  final bool embedded;
+  const NodesScreen({super.key, this.embedded = false});
 
   @override
   State<NodesScreen> createState() => _NodesScreenState();
@@ -45,9 +46,40 @@ class _NodesScreenState extends State<NodesScreen> {
     );
   }
 
+  Widget _list(BuildContext context, String activeUrl) {
+    return ListView(
+      children: _nodes
+          .map((n) => ListTile(
+                leading: Icon(Icons.dns, color: n.url == activeUrl ? BullyColors.online : BullyColors.blurple),
+                title: Text(n.name, style: TextStyle(color: BullyPalette.of(context).textNormal)),
+                subtitle: Text(n.url, style: TextStyle(color: BullyPalette.of(context).textMuted)),
+                trailing: n.url == activeUrl ? const Text('текущая', style: TextStyle(color: BullyColors.online)) : null,
+                onTap: n.url == activeUrl ? null : () => _switchTo(n),
+              ))
+          .toList(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final activeUrl = AppServices.of(context).api.baseUrl;
+    if (widget.embedded) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                Expanded(child: Text('Ноды', style: TextStyle(color: BullyPalette.of(context).textNormal, fontSize: 20, fontWeight: FontWeight.bold))),
+                IconButton(icon: const Icon(Icons.add), onPressed: _addNode, tooltip: 'Добавить ноду'),
+              ],
+            ),
+          ),
+          Expanded(child: _list(context, activeUrl)),
+        ],
+      );
+    }
     return Scaffold(
       backgroundColor: BullyPalette.of(context).bgPrimary,
       appBar: AppBar(
@@ -55,17 +87,7 @@ class _NodesScreenState extends State<NodesScreen> {
         title: const Text('Ноды'),
         actions: [IconButton(icon: const Icon(Icons.add), onPressed: _addNode, tooltip: 'Добавить ноду')],
       ),
-      body: ListView(
-        children: _nodes
-            .map((n) => ListTile(
-                  leading: Icon(Icons.dns, color: n.url == activeUrl ? BullyColors.online : BullyColors.blurple),
-                  title: Text(n.name, style: TextStyle(color: BullyPalette.of(context).textNormal)),
-                  subtitle: Text(n.url, style: TextStyle(color: BullyPalette.of(context).textMuted)),
-                  trailing: n.url == activeUrl ? const Text('текущая', style: TextStyle(color: BullyColors.online)) : null,
-                  onTap: n.url == activeUrl ? null : () => _switchTo(n),
-                ))
-            .toList(),
-      ),
+      body: _list(context, activeUrl),
     );
   }
 }

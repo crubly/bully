@@ -4,6 +4,7 @@ import 'dart:convert';
 
 import 'package:crypto/crypto.dart' as crypto_hash;
 
+import 'avatar/avatar_service.dart';
 import 'calls/call_controller.dart';
 import 'crypto/group_session_manager.dart';
 import 'crypto/session_manager.dart';
@@ -19,6 +20,7 @@ class AppServices extends InheritedWidget {
   final GroupSessionManager groupCrypto;
   final BackgroundSyncService sync;
   final CallController calls;
+  final AvatarService avatars;
 
   AppServices._({
     super.key,
@@ -29,6 +31,7 @@ class AppServices extends InheritedWidget {
     required this.groupCrypto,
     required this.sync,
     required this.calls,
+    required this.avatars,
   });
 
   factory AppServices({Key? key, required Widget child, required String nodeUrl, ApiClient? api, WsClient? ws}) {
@@ -44,6 +47,7 @@ class AppServices extends InheritedWidget {
       groupCrypto: GroupSessionManager(resolvedApi, resolvedWs, () => resolvedCrypto.identity),
       sync: BackgroundSyncService(),
       calls: CallController(resolvedApi, resolvedWs, resolvedCrypto),
+      avatars: AvatarService(resolvedWs, resolvedCrypto),
     );
   }
 

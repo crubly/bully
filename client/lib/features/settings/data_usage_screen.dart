@@ -5,7 +5,8 @@ import '../../core/network/bandwidth_tracker.dart';
 import '../../theme/bully_theme.dart';
 
 class DataUsageScreen extends StatefulWidget {
-  const DataUsageScreen({super.key});
+  final bool embedded;
+  const DataUsageScreen({super.key, this.embedded = false});
 
   @override
   State<DataUsageScreen> createState() => _DataUsageScreenState();
@@ -31,12 +32,8 @@ class _DataUsageScreenState extends State<DataUsageScreen> {
     return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(2)} ГБ';
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: BullyPalette.of(context).bgPrimary,
-      appBar: AppBar(backgroundColor: BullyPalette.of(context).bgPrimary, title: const Text('Данные и память')),
-      body: ListView(
+  Widget _body(BuildContext context) {
+    return ListView(
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
@@ -110,7 +107,16 @@ class _DataUsageScreenState extends State<DataUsageScreen> {
             ),
           ),
         ],
-      ),
+      );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.embedded) return _body(context);
+    return Scaffold(
+      backgroundColor: BullyPalette.of(context).bgPrimary,
+      appBar: AppBar(backgroundColor: BullyPalette.of(context).bgPrimary, title: const Text('Данные и память')),
+      body: _body(context),
     );
   }
 }

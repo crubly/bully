@@ -4,39 +4,45 @@ import '../../theme/bully_theme.dart';
 import '../../theme/theme_controller.dart';
 
 class AppearanceScreen extends StatelessWidget {
-  const AppearanceScreen({super.key});
+  final bool embedded;
+  const AppearanceScreen({super.key, this.embedded = false});
+
+  Widget _body(BuildContext context) {
+    return ListenableBuilder(
+      listenable: ThemeController.instance,
+      builder: (context, _) => ListView(
+        padding: const EdgeInsets.all(12),
+        children: [
+          _ThemeOption(
+            label: 'Тёмная',
+            icon: Icons.dark_mode,
+            selected: ThemeController.instance.mode == ThemeMode.dark,
+            onTap: () => ThemeController.instance.setMode(ThemeMode.dark),
+          ),
+          _ThemeOption(
+            label: 'Светлая',
+            icon: Icons.light_mode,
+            selected: ThemeController.instance.mode == ThemeMode.light,
+            onTap: () => ThemeController.instance.setMode(ThemeMode.light),
+          ),
+          _ThemeOption(
+            label: 'Как в системе',
+            icon: Icons.settings_suggest,
+            selected: ThemeController.instance.mode == ThemeMode.system,
+            onTap: () => ThemeController.instance.setMode(ThemeMode.system),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (embedded) return _body(context);
     return Scaffold(
       backgroundColor: BullyPalette.of(context).bgPrimary,
       appBar: AppBar(backgroundColor: BullyPalette.of(context).bgPrimary, title: const Text('Оформление')),
-      body: ListenableBuilder(
-        listenable: ThemeController.instance,
-        builder: (context, _) => ListView(
-          padding: const EdgeInsets.all(12),
-          children: [
-            _ThemeOption(
-              label: 'Тёмная',
-              icon: Icons.dark_mode,
-              selected: ThemeController.instance.mode == ThemeMode.dark,
-              onTap: () => ThemeController.instance.setMode(ThemeMode.dark),
-            ),
-            _ThemeOption(
-              label: 'Светлая',
-              icon: Icons.light_mode,
-              selected: ThemeController.instance.mode == ThemeMode.light,
-              onTap: () => ThemeController.instance.setMode(ThemeMode.light),
-            ),
-            _ThemeOption(
-              label: 'Как в системе',
-              icon: Icons.settings_suggest,
-              selected: ThemeController.instance.mode == ThemeMode.system,
-              onTap: () => ThemeController.instance.setMode(ThemeMode.system),
-            ),
-          ],
-        ),
-      ),
+      body: _body(context),
     );
   }
 }

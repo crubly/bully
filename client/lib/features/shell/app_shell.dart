@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:typed_data';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/app_services.dart';
@@ -66,6 +68,31 @@ class _AppShellState extends State<AppShell> {
     setState(() => _micMuted = !_micMuted);
 
     AppServices.of(context).calls.setMuted(_micMuted);
+  }
+
+  Future<void> _pickAvatar() async {
+    final result = await FilePicker.platform.pickFiles(type: FileType.image, withData: true);
+    final bytes = result?.files.single.bytes;
+    if (bytes == null) return;
+    if (bytes.length > 2 * 1024 * 1024) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Файл слишком большой (максимум 2 МБ) — выбери картинку поменьше.')),
+        );
+      }
+      return;
+    }
+
+    final services = AppServices.of(context);
+    await services.avatars.setOwnAvatar(bytes);
+    if (mounted) setState(() {});
+
+    // Avatars are local-only and E2E — push the new one straight to every
+    // DM contact you already have open, instead of waiting for their next
+    // chat-open to notice a version mismatch.
+    for (final entry in _entries.where((e) => e.kind == 'dm' && e.peerUserId != null)) {
+      unawaited(services.avatars.shareWithPeer(conversationId: entry.conversationId, peerUserId: entry.peerUserId!));
+    }
   }
 
   void _listenForIncomingCalls() {
@@ -255,23 +282,33 @@ class _AppShellState extends State<AppShell> {
                           : ListView(
                           children: _entries
                               .where((e) => e.kind == 'dm')
-                              .map((e) => ListTile(
-                                    leading: const CircleAvatar(backgroundColor: BullyColors.blurple, child: Icon(Icons.person, color: Colors.white)),
-                                    title: Text(e.label, style: TextStyle(color: BullyPalette.of(context).textNormal)),
-                                    onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                                      builder: (_) => DmChatScreen(
-                                        conversationId: e.conversationId,
-                                        peerUserId: e.peerUserId ?? '',
-                                        peerUsername: e.label,
-                                      ),
-                                    )),
-                                  ))
+                              .map((e) {
+                                final avatarBytes =
+                                    e.peerUserId == null ? null : AppServices.of(context).avatars.peerAvatarBytes(e.peerUserId!);
+                                return ListTile(
+                                  leading: CircleAvatar(
+                                    backgroundColor: BullyColors.blurple,
+                                    backgroundImage: avatarBytes != null ? MemoryImage(avatarBytes) : null,
+                                    child: avatarBytes == null ? const Icon(Icons.person, color: Colors.white) : null,
+                                  ),
+                                  title: Text(e.label, style: TextStyle(color: BullyPalette.of(context).textNormal)),
+                                  onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                                    builder: (_) => DmChatScreen(
+                                      conversationId: e.conversationId,
+                                      peerUserId: e.peerUserId ?? '',
+                                      peerUsername: e.label,
+                                    ),
+                                  )),
+                                );
+                              })
                               .toList(),
                         ),
                 ),
                 _UserBar(
                   username: _myUsername,
                   micMuted: _micMuted,
+                  avatarBytes: AppServices.of(context).avatars.ownAvatarBytes(),
+                  onAvatarTap: _pickAvatar,
                   onToggleMic: _toggleMic,
                   onOpenSettings: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SettingsScreen())),
                 ),
@@ -295,12 +332,16 @@ class _AppShellState extends State<AppShell> {
 class _UserBar extends StatelessWidget {
   final String? username;
   final bool micMuted;
+  final Uint8List? avatarBytes;
+  final VoidCallback onAvatarTap;
   final VoidCallback onToggleMic;
   final VoidCallback onOpenSettings;
 
   const _UserBar({
     required this.username,
     required this.micMuted,
+    required this.avatarBytes,
+    required this.onAvatarTap,
     required this.onToggleMic,
     required this.onOpenSettings,
   });
@@ -313,12 +354,22 @@ class _UserBar extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 16,
-            backgroundColor: BullyColors.blurple,
-            child: Text(
-              (username?.isNotEmpty ?? false) ? username![0].toUpperCase() : '?',
-              style: const TextStyle(color: Colors.white, fontSize: 13),
+          InkWell(
+            onTap: onAvatarTap,
+            customBorder: const CircleBorder(),
+            child: Tooltip(
+              message: 'Сменить аватарку — видна только тем, с кем вы переписываетесь',
+              child: CircleAvatar(
+                radius: 16,
+                backgroundColor: BullyColors.blurple,
+                backgroundImage: avatarBytes != null ? MemoryImage(avatarBytes!) : null,
+                child: avatarBytes == null
+                    ? Text(
+                        (username?.isNotEmpty ?? false) ? username![0].toUpperCase() : '?',
+                        style: const TextStyle(color: Colors.white, fontSize: 13),
+                      )
+                    : null,
+              ),
             ),
           ),
           const SizedBox(width: 8),

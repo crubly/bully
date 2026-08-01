@@ -9,7 +9,8 @@ import '../../core/transfer/device_transfer_service.dart';
 import '../../theme/bully_theme.dart';
 
 class TransferScreen extends StatefulWidget {
-  const TransferScreen({super.key});
+  final bool embedded;
+  const TransferScreen({super.key, this.embedded = false});
 
   @override
   State<TransferScreen> createState() => _TransferScreenState();
@@ -20,16 +21,21 @@ enum _Mode { choose, hosting, joining }
 class _TransferScreenState extends State<TransferScreen> {
   _Mode _mode = _Mode.choose;
 
+  Widget _body(BuildContext context) {
+    return switch (_mode) {
+      _Mode.choose => _ChooseView(onHost: () => setState(() => _mode = _Mode.hosting), onJoin: () => setState(() => _mode = _Mode.joining)),
+      _Mode.hosting => const _HostView(),
+      _Mode.joining => const _JoinView(),
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (widget.embedded) return _body(context);
     return Scaffold(
       backgroundColor: BullyPalette.of(context).bgPrimary,
       appBar: AppBar(backgroundColor: BullyPalette.of(context).bgPrimary, title: const Text('Перенос чатов')),
-      body: switch (_mode) {
-        _Mode.choose => _ChooseView(onHost: () => setState(() => _mode = _Mode.hosting), onJoin: () => setState(() => _mode = _Mode.joining)),
-        _Mode.hosting => const _HostView(),
-        _Mode.joining => const _JoinView(),
-      },
+      body: _body(context),
     );
   }
 }
