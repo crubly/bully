@@ -219,7 +219,7 @@ class _DmChatScreenState extends State<DmChatScreen> {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      IconButton(icon: const Icon(Icons.send, color: BullyColors.blurple), onPressed: _send),
+                      IconButton(icon: Icon(Icons.send, color: BullyColors.blurple), onPressed: _send),
                     ],
                   ),
                 ),

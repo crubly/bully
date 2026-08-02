@@ -1,5 +1,7 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
+import '../../core/desktop_window.dart';
 import '../../core/media/media_cache.dart';
 import '../../core/network/bandwidth_tracker.dart';
 import '../../theme/bully_theme.dart';
@@ -16,6 +18,7 @@ class _DataUsageScreenState extends State<DataUsageScreen> {
   bool _autoSave = MediaCache.autoSaveEnabled;
   int _autoDeleteDays = MediaCache.autoDeleteAfterDays;
   int _cacheBytes = 0;
+  String _savePath = '';
 
   @override
   void initState() {
@@ -23,6 +26,22 @@ class _DataUsageScreenState extends State<DataUsageScreen> {
     MediaCache.currentCacheSizeBytes().then((v) {
       if (mounted) setState(() => _cacheBytes = v);
     });
+    MediaCache.effectiveSaveDirectoryPath().then((v) {
+      if (mounted) setState(() => _savePath = v);
+    });
+  }
+
+  Future<void> _pickSaveDirectory() async {
+    final path = await FilePicker.getDirectoryPath();
+    if (path == null) return;
+    await MediaCache.setSaveDirectoryPath(path);
+    if (mounted) setState(() => _savePath = path);
+  }
+
+  Future<void> _resetSaveDirectory() async {
+    await MediaCache.setSaveDirectoryPath(null);
+    final path = await MediaCache.effectiveSaveDirectoryPath();
+    if (mounted) setState(() => _savePath = path);
   }
 
   String _fmtBytes(int bytes) {
@@ -97,6 +116,24 @@ class _DataUsageScreenState extends State<DataUsageScreen> {
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
             child: Text('Кэш медиа на этом устройстве: ${_fmtBytes(_cacheBytes)}', style: TextStyle(color: BullyPalette.of(context).textMuted, fontSize: 12)),
           ),
+          if (DesktopWindow.isDesktop) ...[
+            Divider(color: BullyPalette.of(context).bgTertiary),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+              child: Text('Папка для сохранения', style: TextStyle(color: BullyPalette.of(context).textMuted, fontSize: 12)),
+            ),
+            ListTile(
+              title: Text(_savePath, style: TextStyle(color: BullyPalette.of(context).textNormal), overflow: TextOverflow.ellipsis),
+              subtitle: Text('Куда сохранять скачанные медиафайлы', style: TextStyle(color: BullyPalette.of(context).textMuted)),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(icon: const Icon(Icons.folder_open), tooltip: 'Выбрать папку', onPressed: _pickSaveDirectory),
+                  IconButton(icon: const Icon(Icons.restart_alt), tooltip: 'Сбросить по умолчанию', onPressed: _resetSaveDirectory),
+                ],
+              ),
+            ),
+          ],
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             child: Text(

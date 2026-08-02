@@ -20,8 +20,8 @@ subprojects {
 }
 
 subprojects {
-    afterEvaluate {
-        if (plugins.hasPlugin("com.android.library") && !plugins.hasPlugin("org.jetbrains.kotlin.android")) {
+    plugins.withId("com.android.library") {
+        if (!plugins.hasPlugin("org.jetbrains.kotlin.android")) {
             pluginManager.apply("org.jetbrains.kotlin.android")
         }
     }

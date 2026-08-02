@@ -182,7 +182,7 @@ class _SessionsScreenState extends State<SessionsScreen> {
                 margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
                 decoration: BoxDecoration(color: BullyPalette.of(context).bgTertiary, borderRadius: BorderRadius.circular(12)),
                 child: ListTile(
-                  leading: const Icon(Icons.phonelink, color: BullyColors.blurple),
+                  leading: Icon(Icons.phonelink, color: BullyColors.blurple),
                   title: Text('Перенести чаты', style: TextStyle(color: BullyPalette.of(context).textNormal)),
                   subtitle: Text('На новое устройство по локальной сети', style: TextStyle(color: BullyPalette.of(context).textMuted, fontSize: 12)),
                   trailing: Icon(Icons.chevron_right, color: BullyPalette.of(context).textMuted),

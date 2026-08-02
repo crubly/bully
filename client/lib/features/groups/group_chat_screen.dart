@@ -213,7 +213,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      IconButton(icon: const Icon(Icons.send, color: BullyColors.blurple), onPressed: _send),
+                      IconButton(icon: Icon(Icons.send, color: BullyColors.blurple), onPressed: _send),
                     ],
                   ),
                 ),

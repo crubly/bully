@@ -8,6 +8,7 @@ import '../auth/auth_screen.dart';
 import 'appearance_screen.dart';
 import 'data_usage_screen.dart';
 import 'nodes_screen.dart';
+import 'profile_screen.dart';
 import 'sessions_screen.dart';
 
 const _wideBreakpoint = 700.0;
@@ -19,6 +20,7 @@ class _SettingsSection {
   final Color? iconColor;
   final WidgetBuilder builder;
   final VoidCallback? onTap;
+  final bool isProfile;
 
   _SettingsSection({
     required this.icon,
@@ -27,6 +29,7 @@ class _SettingsSection {
     required this.builder,
     this.iconColor,
     this.onTap,
+    this.isProfile = false,
   });
 }
 
@@ -40,14 +43,26 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   int _selected = 0;
+  String? _username;
 
   @override
   void initState() {
     super.initState();
+    _loadUsername();
     if (!widget.embedded) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) DesktopWindow.setTitle('Bully — ${_sections(context)[_selected].title}');
       });
+    }
+  }
+
+  Future<void> _loadUsername() async {
+    try {
+      final services = AppServices.of(context);
+      final username = await SecureStore.getUsername(services.api.baseUrl);
+      if (mounted) setState(() => _username = username);
+    } catch (_) {
+      if (mounted) setState(() => _username = '?');
     }
   }
 
@@ -91,6 +106,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   List<_SettingsSection> _sections(BuildContext context) => [
         _SettingsSection(
+          icon: Icons.person,
+          title: _username ?? '...',
+          subtitle: 'Профиль и аватарка',
+          isProfile: true,
+          builder: (_) => const ProfileScreen(embedded: true),
+        ),
+        _SettingsSection(
           icon: Icons.dns,
           title: 'Нода',
           subtitle: AppServices.of(context).api.baseUrl,
@@ -130,18 +152,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
         builder: (context, constraints) {
           final wide = constraints.maxWidth >= _wideBreakpoint;
           if (!wide) {
+            final profile = sections.first;
+            final rest = sections.skip(1);
             return ListView(
               padding: const EdgeInsets.all(12),
-              children: sections
-                  .map((s) => _SettingsTile(
-                        icon: s.icon,
-                        iconColor: s.iconColor,
-                        title: s.title,
-                        subtitle: s.subtitle,
-                        onTap: s.onTap ??
-                            () => Navigator.of(context).push(MaterialPageRoute(builder: s.builder)),
-                      ))
-                  .toList(),
+              children: [
+                _ProfileHeaderTile(
+                  username: _username,
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: profile.builder)),
+                ),
+                const SizedBox(height: 8),
+                ...rest.map((s) => _SettingsTile(
+                      icon: s.icon,
+                      iconColor: s.iconColor,
+                      title: s.title,
+                      subtitle: s.subtitle,
+                      onTap: s.onTap ??
+                          () => Navigator.of(context).push(MaterialPageRoute(builder: s.builder)),
+                    )),
+              ],
             );
           }
 
@@ -159,17 +188,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       margin: const EdgeInsets.only(bottom: 4),
                       decoration: BoxDecoration(
                         color: isSelected ? BullyColors.blurple.withValues(alpha: 0.15) : null,
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(14),
                       ),
                       child: ListTile(
                         dense: true,
-                        leading: Icon(s.icon, size: 20, color: s.iconColor ?? (isSelected ? BullyColors.blurple : BullyPalette.of(context).textMuted)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        leading: s.isProfile
+                            ? CircleAvatar(
+                                radius: 14,
+                                backgroundColor: BullyColors.blurple,
+                                backgroundImage: AppServices.of(context).avatars.ownAvatarBytes() != null
+                                    ? MemoryImage(AppServices.of(context).avatars.ownAvatarBytes()!)
+                                    : null,
+                                child: AppServices.of(context).avatars.ownAvatarBytes() == null
+                                    ? Text(
+                                        (s.title.isNotEmpty ? s.title[0].toUpperCase() : '?'),
+                                        style: const TextStyle(color: Colors.white, fontSize: 12),
+                                      )
+                                    : null,
+                              )
+                            : Icon(s.icon, size: 20, color: s.iconColor ?? (isSelected ? BullyColors.blurple : BullyPalette.of(context).textMuted)),
                         title: Text(
                           s.title,
                           style: TextStyle(
                             color: s.iconColor ?? (isSelected ? BullyColors.blurple : BullyPalette.of(context).textNormal),
                             fontSize: 14,
-                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                            fontWeight: isSelected || s.isProfile ? FontWeight.w600 : FontWeight.normal,
                           ),
                         ),
                         onTap: s.onTap ?? () => _selectSection(i),
@@ -229,13 +273,54 @@ class _SettingsTile extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
         color: BullyPalette.of(context).bgSecondary,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: ListTile(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         leading: Icon(icon, color: iconColor ?? BullyColors.blurple),
         title: Text(title, style: TextStyle(color: iconColor ?? BullyPalette.of(context).textNormal, fontWeight: FontWeight.w600)),
         subtitle: Text(subtitle, style: TextStyle(color: BullyPalette.of(context).textMuted)),
         trailing: iconColor == null ? Icon(Icons.chevron_right, color: BullyPalette.of(context).textMuted) : null,
+        onTap: onTap,
+      ),
+    );
+  }
+}
+
+class _ProfileHeaderTile extends StatelessWidget {
+  final String? username;
+  final VoidCallback onTap;
+
+  const _ProfileHeaderTile({required this.username, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final avatarBytes = AppServices.of(context).avatars.ownAvatarBytes();
+    return Container(
+      decoration: BoxDecoration(
+        color: BullyPalette.of(context).bgSecondary,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        leading: CircleAvatar(
+          radius: 28,
+          backgroundColor: BullyColors.blurple,
+          backgroundImage: avatarBytes != null ? MemoryImage(avatarBytes) : null,
+          child: avatarBytes == null
+              ? Text(
+                  (username?.isNotEmpty ?? false) ? username![0].toUpperCase() : '?',
+                  style: const TextStyle(color: Colors.white, fontSize: 22),
+                )
+              : null,
+        ),
+        title: Text(
+          username ?? '...',
+          style: TextStyle(color: BullyPalette.of(context).textNormal, fontSize: 18, fontWeight: FontWeight.w700),
+        ),
+        subtitle: Text('Профиль и аватарка', style: TextStyle(color: BullyPalette.of(context).textMuted)),
+        trailing: Icon(Icons.chevron_right, color: BullyPalette.of(context).textMuted),
         onTap: onTap,
       ),
     );

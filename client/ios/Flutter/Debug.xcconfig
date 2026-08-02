@@ -1,1 +1,3 @@
 #include "Generated.xcconfig"
+
+ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES

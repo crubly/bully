@@ -235,7 +235,7 @@ class _JoinViewState extends State<_JoinView> {
               : ListView(
                   children: _hosts
                       .map((h) => ListTile(
-                            leading: const Icon(Icons.devices, color: BullyColors.blurple),
+                            leading: Icon(Icons.devices, color: BullyColors.blurple),
                             title: Text(h.name, style: TextStyle(color: BullyPalette.of(context).textNormal)),
                             onTap: () => _pick(h),
                           ))

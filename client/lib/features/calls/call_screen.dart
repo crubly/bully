@@ -1,11 +1,11 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 
 import '../../core/app_services.dart';
 import '../../core/calls/call_controller.dart';
+import '../../core/desktop_window.dart';
 import '../../theme/bully_theme.dart';
 
 class CallScreen extends StatefulWidget {
@@ -78,7 +78,7 @@ class _CallScreenState extends State<CallScreen> {
     }
   }
 
-  bool get _isDesktop => Platform.isMacOS || Platform.isWindows || Platform.isLinux;
+  bool get _isDesktop => DesktopWindow.isDesktop;
 
   @override
   Widget build(BuildContext context) {

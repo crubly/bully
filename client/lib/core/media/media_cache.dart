@@ -19,6 +19,18 @@ class MediaCache {
   static int get autoDeleteAfterDays => (_settings.get('auto_delete_days') as int?) ?? 7;
   static Future<void> setAutoDeleteAfterDays(int days) => _settings.put('auto_delete_days', days);
 
+  static String? get saveDirectoryPathOverride => _settings.get('save_directory_path') as String?;
+  static Future<void> setSaveDirectoryPath(String? path) =>
+      path == null ? _settings.delete('save_directory_path') : _settings.put('save_directory_path', path);
+
+  static Future<String> defaultSaveDirectoryPath() async {
+    final downloads = await getDownloadsDirectory();
+    final base = downloads ?? await getApplicationSupportDirectory();
+    return '${base.path}/Bully';
+  }
+
+  static Future<String> effectiveSaveDirectoryPath() async => saveDirectoryPathOverride ?? await defaultSaveDirectoryPath();
+
   static Future<Directory> _cacheDir() async {
     final base = await getApplicationSupportDirectory();
     final dir = Directory('${base.path}/media_cache');

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
+import 'theme_controller.dart';
+
 class BullyColors {
-  static const blurple = Color(0xFF5865F2);
+  static Color get blurple => ThemeController.instance.accentColor;
   static const bgPrimary = Color(0xFF313338);
   static const bgSecondary = Color(0xFF2B2D31);
   static const bgTertiary = Color(0xFF1E1F22);

@@ -1,12 +1,11 @@
-import 'dart:io';
-
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../desktop_window.dart';
 import 'desktop_secure_store.dart';
 
 class SecureStore {
   static const _storage = FlutterSecureStorage();
-  static bool get _useDesktopStore => Platform.isMacOS || Platform.isWindows || Platform.isLinux;
+  static bool get _useDesktopStore => DesktopWindow.isDesktop;
 
   static Future<void> _write(String key, String value) =>
       _useDesktopStore ? DesktopSecureStore.write(key, value) : _storage.write(key: key, value: value);

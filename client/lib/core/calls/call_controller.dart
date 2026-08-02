@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 
 import '../crypto/session_manager.dart';
+import '../desktop_window.dart';
 import '../network/api_client.dart';
 import '../network/ws_client.dart';
 import 'sdp_privacy.dart';
@@ -137,7 +137,7 @@ class CallController {
   }
 
   Future<void> toggleScreenShare({required bool enable}) async {
-    if (!(Platform.isMacOS || Platform.isWindows || Platform.isLinux)) {
+    if (!DesktopWindow.isDesktop) {
       throw UnsupportedError('Screen share needs native platform integration on mobile — desktop only for now.');
     }
     if (_pc == null || _localStream == null) return;

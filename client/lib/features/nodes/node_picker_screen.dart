@@ -91,7 +91,7 @@ class _NodePickerScreenState extends State<NodePickerScreen> {
                   const SizedBox(height: 24),
                   Align(alignment: Alignment.centerLeft, child: Text('Известные ноды:', style: TextStyle(color: BullyPalette.of(context).textMuted))),
                   ..._known.map((n) => ListTile(
-                        leading: const Icon(Icons.dns, color: BullyColors.blurple),
+                        leading: Icon(Icons.dns, color: BullyColors.blurple),
                         title: Text(n.name, style: TextStyle(color: BullyPalette.of(context).textNormal)),
                         subtitle: Text(n.url, style: TextStyle(color: BullyPalette.of(context).textMuted)),
                         onTap: () {

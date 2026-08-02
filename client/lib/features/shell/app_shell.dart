@@ -1,7 +1,5 @@
 import 'dart:async';
-import 'dart:typed_data';
 
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/app_services.dart';
@@ -13,6 +11,7 @@ import '../dm/dm_chat_screen.dart';
 import '../dm/new_dm_dialog.dart';
 import '../groups/group_chat_screen.dart';
 import '../groups/new_group_dialog.dart';
+import '../settings/profile_screen.dart';
 import '../settings/settings_screen.dart';
 
 class _ConversationEntry {
@@ -71,28 +70,6 @@ class _AppShellState extends State<AppShell> {
     setState(() => _micMuted = !_micMuted);
 
     AppServices.of(context).calls.setMuted(_micMuted);
-  }
-
-  Future<void> _pickAvatar() async {
-    final result = await FilePicker.pickFiles(type: FileType.image, withData: true);
-    final bytes = result?.files.single.bytes;
-    if (bytes == null) return;
-
-    final services = AppServices.of(context);
-    try {
-      await services.avatars.setOwnAvatar(bytes);
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
-      return;
-    }
-    if (mounted) setState(() {});
-
-    // Avatars are local-only and E2E — push the new one straight to every
-    // DM contact you already have open, instead of waiting for their next
-    // chat-open to notice a version mismatch.
-    for (final entry in _entries.where((e) => e.kind == 'dm' && e.peerUserId != null)) {
-      unawaited(services.avatars.shareWithPeer(conversationId: entry.conversationId, peerUserId: entry.peerUserId!));
-    }
   }
 
   void _listenForIncomingCalls() {
@@ -232,7 +209,13 @@ class _AppShellState extends State<AppShell> {
                 IconButton(icon: const Icon(Icons.person_add), tooltip: 'Новое сообщение', onPressed: _openNewDm),
                 IconButton(icon: const Icon(Icons.group_add), tooltip: 'Новая группа', onPressed: _openNewGroup),
               ]
-            : null,
+            : [
+                IconButton(
+                  icon: const Icon(Icons.edit_outlined),
+                  tooltip: 'Редактировать профиль',
+                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ProfileScreen())),
+                ),
+              ],
       ),
       body: IndexedStack(
         index: _mobileTab,
@@ -333,6 +316,35 @@ class _AppShellState extends State<AppShell> {
                   onPressed: _openNewGroup,
                   tooltip: 'Новая группа',
                 ),
+                const Spacer(),
+                IconButton(
+                  icon: Icon(Icons.mic, size: 20, color: _micMuted ? BullyColors.danger : BullyPalette.of(context).textMuted),
+                  onPressed: _toggleMic,
+                  tooltip: _micMuted ? 'Включить микрофон' : 'Выключить микрофон',
+                ),
+                InkWell(
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SettingsScreen())),
+                  customBorder: const CircleBorder(),
+                  child: Tooltip(
+                    message: 'Настройки',
+                    child: Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: CircleAvatar(
+                        radius: 18,
+                        backgroundColor: BullyColors.blurple,
+                        backgroundImage:
+                            AppServices.of(context).avatars.ownAvatarBytes() != null ? MemoryImage(AppServices.of(context).avatars.ownAvatarBytes()!) : null,
+                        child: AppServices.of(context).avatars.ownAvatarBytes() == null
+                            ? Text(
+                                (_myUsername?.isNotEmpty ?? false) ? _myUsername![0].toUpperCase() : '?',
+                                style: const TextStyle(color: Colors.white, fontSize: 14),
+                              )
+                            : null,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
               ],
             ),
           ),
@@ -396,14 +408,6 @@ class _AppShellState extends State<AppShell> {
                               .toList(),
                         ),
                 ),
-                _UserBar(
-                  username: _myUsername,
-                  micMuted: _micMuted,
-                  avatarBytes: AppServices.of(context).avatars.ownAvatarBytes(),
-                  onAvatarTap: _pickAvatar,
-                  onToggleMic: _toggleMic,
-                  onOpenSettings: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SettingsScreen())),
-                ),
               ],
             ),
           ),
@@ -414,73 +418,6 @@ class _AppShellState extends State<AppShell> {
                 child: Text('Выберите чат слева или начните новый', style: TextStyle(color: BullyPalette.of(context).textMuted)),
               ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _UserBar extends StatelessWidget {
-  final String? username;
-  final bool micMuted;
-  final Uint8List? avatarBytes;
-  final VoidCallback onAvatarTap;
-  final VoidCallback onToggleMic;
-  final VoidCallback onOpenSettings;
-
-  const _UserBar({
-    required this.username,
-    required this.micMuted,
-    required this.avatarBytes,
-    required this.onAvatarTap,
-    required this.onToggleMic,
-    required this.onOpenSettings,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 52,
-      color: BullyPalette.of(context).bgTertiary,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: Row(
-        children: [
-          InkWell(
-            onTap: onAvatarTap,
-            customBorder: const CircleBorder(),
-            child: Tooltip(
-              message: 'Сменить аватарку — видна только тем, с кем вы переписываетесь',
-              child: CircleAvatar(
-                radius: 16,
-                backgroundColor: BullyColors.blurple,
-                backgroundImage: avatarBytes != null ? MemoryImage(avatarBytes!) : null,
-                child: avatarBytes == null
-                    ? Text(
-                        (username?.isNotEmpty ?? false) ? username![0].toUpperCase() : '?',
-                        style: const TextStyle(color: Colors.white, fontSize: 13),
-                      )
-                    : null,
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              username ?? '...',
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: BullyPalette.of(context).textNormal, fontSize: 13, fontWeight: FontWeight.w600),
-            ),
-          ),
-          IconButton(
-            icon: Icon(Icons.mic, size: 18, color: micMuted ? BullyColors.danger : BullyPalette.of(context).textMuted),
-            onPressed: onToggleMic,
-            tooltip: micMuted ? 'Включить микрофон' : 'Выключить микрофон',
-          ),
-          IconButton(
-            icon: Icon(Icons.settings, size: 18, color: BullyPalette.of(context).textMuted),
-            onPressed: onOpenSettings,
-            tooltip: 'Настройки',
           ),
         ],
       ),
