@@ -40,9 +40,11 @@ func (h *Hub) Register(userID string, c *Conn) {
 	h.mu.Unlock()
 }
 
-func (h *Hub) Unregister(userID string) {
+func (h *Hub) Unregister(userID string, c *Conn) {
 	h.mu.Lock()
-	delete(h.conns, userID)
+	if h.conns[userID] == c {
+		delete(h.conns, userID)
+	}
 	h.mu.Unlock()
 }
 

@@ -55,7 +55,7 @@ func (h *Handler) Serve(w http.ResponseWriter, r *http.Request) {
 
 	conn := ws.NewConn(claims.UserID, wsConn)
 	h.Hub.Register(claims.UserID, conn)
-	defer h.Hub.Unregister(claims.UserID)
+	defer h.Hub.Unregister(claims.UserID, conn)
 
 	go conn.WritePump()
 	h.deliverOffline(r.Context(), claims.UserID, conn)

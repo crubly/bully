@@ -22,6 +22,7 @@ class _SettingsSection {
   final String subtitle;
   final Color? iconColor;
   final WidgetBuilder builder;
+  final WidgetBuilder pushBuilder;
   final VoidCallback? onTap;
   final bool isProfile;
 
@@ -30,6 +31,7 @@ class _SettingsSection {
     required this.title,
     required this.subtitle,
     required this.builder,
+    required this.pushBuilder,
     this.iconColor,
     this.onTap,
     this.isProfile = false,
@@ -100,36 +102,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
           subtitle: 'Профиль и аватарка',
           isProfile: true,
           builder: (_) => const ProfileScreen(embedded: true),
+          pushBuilder: (_) => const ProfileScreen(),
         ),
         _SettingsSection(
           icon: Icons.dns,
           title: 'Нода',
           subtitle: AppServices.of(context).api.baseUrl,
           builder: (_) => const NodesScreen(embedded: true),
+          pushBuilder: (_) => const NodesScreen(),
         ),
         _SettingsSection(
           icon: Icons.palette,
           title: 'Оформление',
           subtitle: 'Тёмная, светлая или системная тема',
           builder: (_) => const AppearanceScreen(embedded: true),
+          pushBuilder: (_) => const AppearanceScreen(),
         ),
         _SettingsSection(
           icon: Icons.devices,
           title: 'Сессии',
           subtitle: 'Устройства, автозавершение сессий, перенос чатов',
           builder: (_) => const SessionsScreen(embedded: true),
+          pushBuilder: (_) => const SessionsScreen(),
         ),
         _SettingsSection(
           icon: Icons.data_usage,
           title: 'Данные и память',
           subtitle: 'Трафик, автосохранение и автоудаление медиа',
           builder: (_) => const DataUsageScreen(embedded: true),
+          pushBuilder: (_) => const DataUsageScreen(),
         ),
         _SettingsSection(
           icon: Icons.privacy_tip,
           title: 'Конфиденциальность',
           subtitle: 'Локальный пароль и автоблокировка приложения',
           builder: (_) => const PrivacyScreen(embedded: true),
+          pushBuilder: (_) => const PrivacyScreen(),
         ),
         _SettingsSection(
           icon: Icons.logout,
@@ -137,6 +145,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           title: 'Выйти',
           subtitle: 'Выйти из аккаунта на этом устройстве',
           builder: (_) => const SizedBox.shrink(),
+          pushBuilder: (_) => const SizedBox.shrink(),
           onTap: () => _logout(context),
         ),
       ];
@@ -154,7 +163,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: [
                 _ProfileHeaderTile(
                   username: _username,
-                  onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: profile.builder)),
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: profile.pushBuilder)),
                 ),
                 const SizedBox(height: 8),
                 ...rest.map((s) => _SettingsTile(
@@ -163,7 +172,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       title: s.title,
                       subtitle: s.subtitle,
                       onTap: s.onTap ??
-                          () => Navigator.of(context).push(MaterialPageRoute(builder: s.builder)),
+                          () => Navigator.of(context).push(MaterialPageRoute(builder: s.pushBuilder)),
                     )),
               ],
             );

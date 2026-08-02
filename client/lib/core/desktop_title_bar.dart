@@ -19,31 +19,34 @@ class DesktopTitleBar extends StatelessWidget {
       behavior: HitTestBehavior.translucent,
       onPanStart: (_) => DesktopWindow.startDragging(),
       onDoubleTap: DesktopWindow.toggleMaximize,
-      child: Container(
-        height: 32,
+      child: Material(
+        type: MaterialType.canvas,
         color: palette.bgPrimary,
-        child: Row(
-          children: [
-            Expanded(
-              child: Center(
-                child: ValueListenableBuilder<bool>(
-                  valueListenable: WsClient.connected,
-                  builder: (context, connected, _) {
-                    if (connected) return const SizedBox.shrink();
-                    return const Text(
-                      'переподключение...',
-                      style: TextStyle(color: Colors.white, fontSize: 11),
-                    );
-                  },
+        child: SizedBox(
+          height: 32,
+          child: Row(
+            children: [
+              Expanded(
+                child: Center(
+                  child: ValueListenableBuilder<bool>(
+                    valueListenable: WsClient.connected,
+                    builder: (context, connected, _) {
+                      if (connected) return const SizedBox.shrink();
+                      return const Text(
+                        'переподключение...',
+                        style: TextStyle(color: Colors.white, fontSize: 11),
+                      );
+                    },
+                  ),
                 ),
               ),
-            ),
-            if (showControls) ...[
-              _TitleBarButton(icon: Icons.remove, color: palette.textMuted, onTap: DesktopWindow.minimize),
-              _TitleBarButton(icon: Icons.crop_square, color: palette.textMuted, onTap: DesktopWindow.toggleMaximize),
-              _TitleBarButton(icon: Icons.close, color: palette.textMuted, onTap: DesktopWindow.close, danger: true),
+              if (showControls) ...[
+                _TitleBarButton(icon: Icons.remove, color: palette.textMuted, onTap: DesktopWindow.minimize),
+                _TitleBarButton(icon: Icons.crop_square, color: palette.textMuted, onTap: DesktopWindow.toggleMaximize),
+                _TitleBarButton(icon: Icons.close, color: palette.textMuted, onTap: DesktopWindow.close, danger: true),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
