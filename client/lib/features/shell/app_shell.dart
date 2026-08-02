@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/app_services.dart';
 import '../../core/calls/call_controller.dart';
+import '../../core/security/app_lock.dart';
 import '../../core/storage/secure_store.dart';
 import '../../theme/bully_theme.dart';
 import '../../theme/theme_controller.dart';
@@ -258,6 +259,8 @@ class _AppShellState extends State<AppShell> {
         title: Text(_mobileTab == 0 ? 'Чаты' : 'Настройки'),
         actions: _mobileTab == 0
             ? [
+                if (AppLock.instance.enabled)
+                  IconButton(icon: const Icon(Icons.lock_outline), tooltip: 'Заблокировать', onPressed: AppLock.instance.lockNow),
                 IconButton(icon: const Icon(Icons.person_add), tooltip: 'Новое сообщение', onPressed: _openNewDm),
                 IconButton(icon: const Icon(Icons.group_add), tooltip: 'Новая группа', onPressed: _openNewGroup),
               ]
@@ -363,6 +366,17 @@ class _AppShellState extends State<AppShell> {
                   icon: CircleAvatar(backgroundColor: BullyPalette.of(context).bgSecondary, child: Icon(Icons.add, color: BullyColors.online)),
                   onPressed: _openNewGroup,
                   tooltip: 'Новая группа',
+                ),
+                ListenableBuilder(
+                  listenable: AppLock.instance,
+                  builder: (context, _) => AppLock.instance.enabled
+                      ? IconButton(
+                          icon: const Icon(Icons.lock_outline, size: 20),
+                          color: BullyPalette.of(context).textMuted,
+                          onPressed: AppLock.instance.lockNow,
+                          tooltip: 'Заблокировать',
+                        )
+                      : const SizedBox.shrink(),
                 ),
               ],
             ),

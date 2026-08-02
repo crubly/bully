@@ -12,10 +12,12 @@ import 'core/network/api_client.dart';
 import 'core/network/bandwidth_tracker.dart';
 import 'core/network/node_trust_banner.dart';
 import 'core/node_store.dart';
+import 'core/security/app_lock.dart';
 import 'core/storage/chat_history_store.dart';
 import 'core/storage/secure_store.dart';
 import 'features/auth/auth_screen.dart';
 import 'features/nodes/node_picker_screen.dart';
+import 'features/security/lock_screen.dart';
 import 'features/shell/app_shell.dart';
 import 'theme/bully_theme.dart';
 import 'theme/theme_backdrop.dart';
@@ -49,6 +51,7 @@ void main() async {
   await MediaCache.init();
   await AvatarStore.init();
   await ThemeController.instance.init();
+  await AppLock.instance.init();
   runApp(const BullyApp());
 }
 
@@ -145,23 +148,31 @@ class _BullyAppState extends State<BullyApp> {
         darkTheme: buildBullyTheme(Brightness.dark),
         builder: node == null
             ? null
-            : (context, child) => Stack(
-                  children: [
-                    const Positioned.fill(child: ThemeBackdrop()),
-                    Column(
-                      children: [
-                        const DesktopTitleBar(),
-                        const NodeTrustBanner(),
-                        Expanded(
-                          child: AppServices(
-                            key: ValueKey(node.url),
-                            nodeUrl: node.url,
-                            child: child!,
+            : (context, child) => Listener(
+                  behavior: HitTestBehavior.translucent,
+                  onPointerDown: (_) => AppLock.instance.recordActivity(),
+                  child: Stack(
+                    children: [
+                      const Positioned.fill(child: ThemeBackdrop()),
+                      Column(
+                        children: [
+                          const DesktopTitleBar(),
+                          const NodeTrustBanner(),
+                          Expanded(
+                            child: AppServices(
+                              key: ValueKey(node.url),
+                              nodeUrl: node.url,
+                              child: child!,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ],
+                        ],
+                      ),
+                      ListenableBuilder(
+                        listenable: AppLock.instance,
+                        builder: (context, _) => AppLock.instance.locked ? const Positioned.fill(child: LockScreen()) : const SizedBox.shrink(),
+                      ),
+                    ],
+                  ),
                 ),
         home: _checkingSavedNode
             ? const Scaffold(body: Center(child: CircularProgressIndicator()))

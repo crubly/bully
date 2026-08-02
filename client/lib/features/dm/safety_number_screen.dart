@@ -7,6 +7,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../core/app_services.dart';
 import '../../core/crypto/safety_number.dart';
+import '../../core/crypto/security/peer_identity_store.dart';
 import '../../core/desktop_window.dart';
 import '../../theme/bully_theme.dart';
 
@@ -25,11 +26,18 @@ class _SafetyNumberScreenState extends State<SafetyNumberScreen> {
   String? _safetyNumber;
   String? _error;
   bool? _matchResult;
+  bool _verified = false;
 
   @override
   void initState() {
     super.initState();
     _compute();
+    _loadVerified();
+  }
+
+  Future<void> _loadVerified() async {
+    final verified = await PeerIdentityStore.isVerified(widget.peerUserId);
+    if (mounted) setState(() => _verified = verified);
   }
 
   Future<void> _compute() async {
@@ -52,7 +60,19 @@ class _SafetyNumberScreenState extends State<SafetyNumberScreen> {
     );
     if (scanned == null || !mounted) return;
     final theirNumber = scanned.substring(_qrPrefix.length);
-    setState(() => _matchResult = theirNumber == _safetyNumber);
+    final matched = theirNumber == _safetyNumber;
+    setState(() => _matchResult = matched);
+    if (matched) await _markVerified();
+  }
+
+  Future<void> _confirmManually(bool matches) async {
+    setState(() => _matchResult = matches);
+    if (matches) await _markVerified();
+  }
+
+  Future<void> _markVerified() async {
+    await PeerIdentityStore.markVerified(widget.peerUserId);
+    if (mounted) setState(() => _verified = true);
   }
 
   @override
@@ -69,9 +89,22 @@ class _SafetyNumberScreenState extends State<SafetyNumberScreen> {
             children: [
               Text(
                 'Сравните этот код с ${widget.peerUsername} лично, голосом или отсканировав QR друг у друга. '
-                'Если код совпадает — никто не подменил ключи шифрования между вами (в том числе роутер или провайдер).',
+                'Даже если нода полностью контролируется атакующим и молча логирует всё — она видит только шифртекст. '
+                'Единственный способ её обмануть — подменить ключ при установке чата, а этот код это вскрывает.',
                 style: TextStyle(color: BullyPalette.of(context).textMuted, fontSize: 13),
                 textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(_verified ? Icons.verified_user : Icons.gpp_maybe, color: _verified ? BullyColors.online : BullyColors.danger, size: 18),
+                  const SizedBox(width: 6),
+                  Text(
+                    _verified ? 'Подтверждено' : 'Ещё не подтверждено',
+                    style: TextStyle(color: _verified ? BullyColors.online : BullyColors.danger, fontWeight: FontWeight.bold),
+                  ),
+                ],
               ),
               const SizedBox(height: 20),
               if (_error != null) Text(_error!, style: const TextStyle(color: BullyColors.danger)),
@@ -103,6 +136,29 @@ class _SafetyNumberScreenState extends State<SafetyNumberScreen> {
                     label: const Text('Сканировать код собеседника'),
                   ),
                 ],
+                const SizedBox(height: 16),
+                Text(
+                  'Сверили голосом или лично, а не сканом — подтвердите вручную:',
+                  style: TextStyle(color: BullyPalette.of(context).textMuted, fontSize: 12),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: () => _confirmManually(true),
+                      icon: const Icon(Icons.check, size: 18, color: BullyColors.online),
+                      label: const Text('Совпадает'),
+                    ),
+                    const SizedBox(width: 8),
+                    OutlinedButton.icon(
+                      onPressed: () => _confirmManually(false),
+                      icon: const Icon(Icons.close, size: 18, color: BullyColors.danger),
+                      label: const Text('Не совпадает'),
+                    ),
+                  ],
+                ),
                 if (_matchResult != null) ...[
                   const SizedBox(height: 16),
                   Row(

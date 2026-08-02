@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../core/app_services.dart';
-import '../../core/crypto/session_manager.dart';
+import '../../core/crypto/security/peer_identity_store.dart';
 import '../../core/network/node_trust_monitor.dart';
 import '../../core/network/ws_client.dart';
 import '../../core/storage/chat_history_store.dart';

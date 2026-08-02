@@ -1,7 +1,10 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:cryptography/cryptography.dart';
+
 import '../network/api_client.dart';
+import '../security/app_lock.dart';
 import '../storage/secure_store.dart';
 import 'double_ratchet.dart';
 import 'kdf.dart';
@@ -37,20 +40,51 @@ class CryptoSessionManager {
     });
   }
 
+  // When the app lock is enabled, the identity private key is encrypted at
+  // rest with a key derived from the lock password (via Argon2id) — that
+  // password only unlocks access to the already-independently-generated
+  // private key, it never forms the key itself. Without the app lock, the
+  // key is stored plain in SecureStore (Keychain/Keystore on mobile, which
+  // are already hardware-backed where the device supports it).
   Future<void> _persistIdentity() async {
     final privBytes = await _identity!.keyPair.extractPrivateKeyBytes();
-    await SecureStore.setBlob('identity_keypair', jsonEncode({
-      'private': base64Encode(privBytes),
-      'public': base64Encode(_identity!.publicKeyBytes),
-    }));
+    final publicB64 = base64Encode(_identity!.publicKeyBytes);
+    if (AppLock.instance.enabled) {
+      final key = AppLock.instance.lockKey;
+      if (key == null) throw StateError('app lock enabled but not unlocked — cannot persist identity key');
+      final box = await AesGcm.with256bits().encrypt(privBytes, secretKey: SecretKey(key));
+      await SecureStore.setBlob('identity_keypair', jsonEncode({
+        'wrapped': true,
+        'private_enc': base64Encode(box.concatenation()),
+        'public': publicB64,
+      }));
+    } else {
+      await SecureStore.setBlob('identity_keypair', jsonEncode({
+        'wrapped': false,
+        'private': base64Encode(privBytes),
+        'public': publicB64,
+      }));
+    }
   }
 
   Future<X25519KeyPair> _loadIdentityFromJson(Map<String, dynamic> json) async {
+    final publicBytes = base64Decode(json['public'] as String);
+    final wrapped = json['wrapped'] as bool? ?? false;
+    if (!wrapped) {
+      return X25519KeyPairCodec.fromBytes(base64Decode(json['private'] as String), publicBytes);
+    }
+    final key = AppLock.instance.lockKey;
+    if (key == null) throw StateError('identity key is locked — unlock the app first');
+    final box = SecretBox.fromConcatenation(base64Decode(json['private_enc'] as String), nonceLength: 12, macLength: 16);
+    final privBytes = await AesGcm.with256bits().decrypt(box, secretKey: SecretKey(key));
+    return X25519KeyPairCodec.fromBytes(Uint8List.fromList(privBytes), publicBytes);
+  }
 
-    return X25519KeyPairCodec.fromBytes(
-      base64Decode(json['private'] as String),
-      base64Decode(json['public'] as String),
-    );
+  /// Re-persists the identity key under the current app-lock state — call
+  /// after enabling or disabling the lock so the on-disk wrapping matches.
+  Future<void> rewrapIdentity() async {
+    if (_identity == null) return;
+    await _persistIdentity();
   }
 
   /// Explicitly re-pins a peer's identity key after the caller has shown

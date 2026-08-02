@@ -10,6 +10,7 @@ import '../auth/auth_screen.dart';
 import 'appearance_screen.dart';
 import 'data_usage_screen.dart';
 import 'nodes_screen.dart';
+import 'privacy_screen.dart';
 import 'profile_screen.dart';
 import 'sessions_screen.dart';
 
@@ -123,6 +124,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
           title: 'Данные и память',
           subtitle: 'Трафик, автосохранение и автоудаление медиа',
           builder: (_) => const DataUsageScreen(embedded: true),
+        ),
+        _SettingsSection(
+          icon: Icons.privacy_tip,
+          title: 'Конфиденциальность',
+          subtitle: 'Локальный пароль и автоблокировка приложения',
+          builder: (_) => const PrivacyScreen(embedded: true),
         ),
         _SettingsSection(
           icon: Icons.logout,
