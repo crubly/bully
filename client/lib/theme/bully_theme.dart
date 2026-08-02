@@ -21,6 +21,8 @@ class BullyColors {
 
 Color _tinted(double hue, double saturation, double value) => HSVColor.fromAHSV(1, hue, saturation, value).toColor();
 
+Color borderFor(Color background) => Color.lerp(background, Colors.black, 0.22)!;
+
 Color? _themeBlend() {
   final points = ThemeController.instance.themeGradient;
   if (points == null || points.isEmpty) return null;
@@ -60,6 +62,9 @@ class BullyPalette {
     required this.textMuted,
   });
 
+  Color get cardBorder => borderFor(bgSecondary);
+  Color get inputBorder => borderFor(bgTertiary);
+
   static BullyPalette of(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
     final custom = ThemeController.instance.hasCustomBackground;
@@ -87,6 +92,8 @@ ThemeData buildBullyTheme(Brightness brightness) {
   final modalSurface = _modalSurface(brightness);
   final textNormal = dark ? BullyColors.textNormal : BullyColors.textNormalLight;
   final textMuted = dark ? BullyColors.textMuted : BullyColors.textMutedLight;
+  final cardBorder = borderFor(bgSecondary);
+  final inputBorder = borderFor(bgTertiary);
 
   return ThemeData(
     useMaterial3: true,
@@ -112,17 +119,17 @@ ThemeData buildBullyTheme(Brightness brightness) {
       color: bgSecondary,
       surfaceTintColor: Colors.transparent,
       elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(_radius)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(_radius), side: BorderSide(color: cardBorder)),
     ),
     dialogTheme: DialogThemeData(
       backgroundColor: modalSurface,
       surfaceTintColor: Colors.transparent,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(_radius)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(_radius), side: BorderSide(color: borderFor(modalSurface))),
     ),
     popupMenuTheme: PopupMenuThemeData(
       color: modalSurface,
       surfaceTintColor: Colors.transparent,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(_radius)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(_radius), side: BorderSide(color: borderFor(modalSurface))),
     ),
     listTileTheme: ListTileThemeData(
       textColor: textNormal,
@@ -132,7 +139,7 @@ ThemeData buildBullyTheme(Brightness brightness) {
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: bgTertiary,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(_radius), borderSide: BorderSide.none),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(_radius), borderSide: BorderSide(color: inputBorder)),
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(

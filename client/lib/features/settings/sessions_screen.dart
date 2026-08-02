@@ -156,7 +156,11 @@ class _SessionsScreenState extends State<SessionsScreen> {
               Container(
                 margin: const EdgeInsets.all(12),
                 padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(color: BullyPalette.of(context).bgTertiary, borderRadius: BorderRadius.circular(12)),
+                decoration: BoxDecoration(
+                  color: BullyPalette.of(context).bgTertiary,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: BullyPalette.of(context).inputBorder),
+                ),
                 child: ListTile(
                   leading: Icon(Icons.timer_off, color: BullyPalette.of(context).textMuted),
                   title: Text('Автозавершение неактивной сессии', style: TextStyle(color: BullyPalette.of(context).textNormal)),
@@ -180,7 +184,11 @@ class _SessionsScreenState extends State<SessionsScreen> {
               ),
               Container(
                 margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                decoration: BoxDecoration(color: BullyPalette.of(context).bgTertiary, borderRadius: BorderRadius.circular(12)),
+                decoration: BoxDecoration(
+                  color: BullyPalette.of(context).bgTertiary,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: BullyPalette.of(context).inputBorder),
+                ),
                 child: ListTile(
                   leading: Icon(Icons.phonelink, color: BullyColors.blurple),
                   title: Text('Перенести чаты', style: TextStyle(color: BullyPalette.of(context).textNormal)),

@@ -335,7 +335,10 @@ class _AppShellState extends State<AppShell> {
         children: [
           Container(
             width: 72,
-            color: BullyPalette.of(context).bgTertiary,
+            decoration: BoxDecoration(
+              color: BullyPalette.of(context).bgTertiary,
+              border: Border(right: BorderSide(color: BullyPalette.of(context).cardBorder)),
+            ),
             child: Column(
               children: [
                 const SizedBox(height: 12),
@@ -366,7 +369,10 @@ class _AppShellState extends State<AppShell> {
           ),
           Container(
             width: 240,
-            color: BullyPalette.of(context).bgSecondary,
+            decoration: BoxDecoration(
+              color: BullyPalette.of(context).bgSecondary,
+              border: Border(right: BorderSide(color: BullyPalette.of(context).cardBorder)),
+            ),
             child: Column(
               children: [
                 Padding(
@@ -470,7 +476,10 @@ class _UserBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: 52,
-      color: BullyPalette.of(context).bgTertiary,
+      decoration: BoxDecoration(
+        color: BullyPalette.of(context).bgTertiary,
+        border: Border(top: BorderSide(color: BullyPalette.of(context).cardBorder)),
+      ),
       padding: const EdgeInsets.symmetric(horizontal: 8),
       child: Row(
         children: [

@@ -262,6 +262,7 @@ class _SettingsTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: BullyPalette.of(context).bgSecondary,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: BullyPalette.of(context).cardBorder),
       ),
       child: ListTile(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -285,8 +286,12 @@ class _ProfileHeaderTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final avatarBytes = AppServices.of(context).avatars.ownAvatarBytes();
     final gradient = ThemeController.instance.themeGradient;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: BullyPalette.of(context).cardBorder),
+      ),
+      clipBehavior: Clip.antiAlias,
       child: Stack(
         children: [
           if (gradient != null)

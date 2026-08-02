@@ -84,7 +84,11 @@ class _AppearanceScreenState extends State<AppearanceScreen> {
             ),
             Container(
               padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(color: BullyPalette.of(context).bgSecondary, borderRadius: BorderRadius.circular(16)),
+              decoration: BoxDecoration(
+                color: BullyPalette.of(context).bgSecondary,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: BullyPalette.of(context).cardBorder),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -123,7 +127,11 @@ class _AppearanceScreenState extends State<AppearanceScreen> {
             ),
             Container(
               padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(color: BullyPalette.of(context).bgSecondary, borderRadius: BorderRadius.circular(16)),
+              decoration: BoxDecoration(
+                color: BullyPalette.of(context).bgSecondary,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: BullyPalette.of(context).cardBorder),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -258,7 +266,7 @@ class _ThemeOption extends StatelessWidget {
       decoration: BoxDecoration(
         color: BullyPalette.of(context).bgSecondary,
         borderRadius: BorderRadius.circular(12),
-        border: selected ? Border.all(color: BullyColors.blurple, width: 2) : null,
+        border: Border.all(color: selected ? BullyColors.blurple : BullyPalette.of(context).cardBorder, width: selected ? 2 : 1),
       ),
       child: ListTile(
         leading: Icon(icon, color: selected ? BullyColors.blurple : BullyPalette.of(context).textMuted),

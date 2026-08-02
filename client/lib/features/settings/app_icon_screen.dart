@@ -86,7 +86,7 @@ class _IconOption extends StatelessWidget {
       decoration: BoxDecoration(
         color: BullyPalette.of(context).bgSecondary,
         borderRadius: BorderRadius.circular(16),
-        border: selected ? Border.all(color: BullyColors.blurple, width: 2) : null,
+        border: Border.all(color: selected ? BullyColors.blurple : BullyPalette.of(context).cardBorder, width: selected ? 2 : 1),
       ),
       child: ListTile(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
