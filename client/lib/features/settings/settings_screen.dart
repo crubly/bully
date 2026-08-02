@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/app_services.dart';
+import '../../core/background/background_keepalive.dart';
 import '../../core/desktop_window.dart';
 import '../../core/storage/secure_store.dart';
 import '../../theme/bully_theme.dart';
@@ -87,6 +88,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     final services = AppServices.of(context);
     services.ws.close();
+    await BackgroundKeepAlive.stop();
     await SecureStore.clearAuthToken(services.api.baseUrl);
     if (!context.mounted) return;
     Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../core/app_services.dart';
+import '../../core/calls/call_controller.dart';
 import '../../core/crypto/security/peer_identity_store.dart';
 import '../../core/network/node_trust_monitor.dart';
 import '../../core/network/ws_client.dart';
@@ -12,6 +13,7 @@ import '../../core/storage/chat_history_store.dart';
 import '../../core/storage/secure_store.dart';
 import '../../theme/bully_theme.dart';
 import '../calls/call_screen.dart';
+import '../calls/compact_call_bar.dart';
 import '../chat_setup/set_passphrase_dialog.dart';
 import 'safety_number_screen.dart';
 
@@ -45,9 +47,11 @@ class _DmChatScreenState extends State<DmChatScreen> {
   final _input = TextEditingController();
   StreamSubscription<String>? _inboxSub;
   StreamSubscription<String>? _avatarSub;
+  StreamSubscription<CallState>? _callStateSub;
   String? _myUserId;
   bool _ready = false;
   String? _initError;
+  CallState _callState = CallState.idle;
 
   void _reloadFromHistory() {
     final history = ChatHistoryStore.messagesFor(widget.conversationId);
@@ -69,6 +73,13 @@ class _DmChatScreenState extends State<DmChatScreen> {
       _myUserId = await SecureStore.getUserId(services.api.baseUrl);
 
       _reloadFromHistory();
+
+      _callState = services.calls.activeConversationId == widget.conversationId ? services.calls.state : CallState.idle;
+      _callStateSub?.cancel();
+      _callStateSub = services.calls.stateStream.listen((s) {
+        if (!mounted) return;
+        setState(() => _callState = services.calls.activeConversationId == widget.conversationId ? s : CallState.idle);
+      });
 
       _inboxSub?.cancel();
       _inboxSub = services.inbox.onConversationUpdated.listen((conversationId) {
@@ -171,9 +182,10 @@ class _DmChatScreenState extends State<DmChatScreen> {
   Future<void> _startCall({required bool video}) async {
     if (_blockIfCompromised()) return;
     final services = AppServices.of(context);
+    final compact = useCompactCallUi(context);
     await services.calls.startCall(conversationId: widget.conversationId, peerUserId: widget.peerUserId, video: video);
-    if (mounted) {
-      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CallScreen()));
+    if (mounted && !compact) {
+      Navigator.of(context).push(MaterialPageRoute(builder: (_) => CallScreen(labels: {widget.peerUserId: widget.peerUsername})));
     }
   }
 
@@ -215,6 +227,7 @@ class _DmChatScreenState extends State<DmChatScreen> {
   void dispose() {
     _inboxSub?.cancel();
     _avatarSub?.cancel();
+    _callStateSub?.cancel();
     super.dispose();
   }
 
@@ -256,6 +269,8 @@ class _DmChatScreenState extends State<DmChatScreen> {
       body: _ready
           ? Column(
               children: [
+                if (_callState != CallState.idle && _callState != CallState.ended && useCompactCallUi(context))
+                  CompactCallBar(calls: AppServices.of(context).calls, labelFor: (_) => widget.peerUsername),
                 Expanded(
                   child: ListView.builder(
                     padding: const EdgeInsets.all(12),

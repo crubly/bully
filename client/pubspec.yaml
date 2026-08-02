@@ -26,6 +26,9 @@ dependencies:
   video_player: ^2.9.5
   qr_flutter: ^4.1.0
   mobile_scanner: ^7.0.1
+  tray_manager: ^0.5.1
+  launch_at_startup: ^0.5.1
+  flutter_local_notifications: ^19.1.0
 
 dev_dependencies:
   flutter_test:
@@ -34,3 +37,5 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/tray/

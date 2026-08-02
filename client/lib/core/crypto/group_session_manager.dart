@@ -58,6 +58,39 @@ class GroupSessionManager {
     await SecureStore.setBlob('ratchet:$kxId', jsonEncode(await session.toJson()));
   }
 
+  Future<RatchetSession> _loadExistingKx(String groupId, String myUserId, String otherUserId) async {
+    final kxId = _kxId(groupId, myUserId, otherUserId);
+    final cached = _kxSessions[kxId];
+    if (cached != null) return cached;
+    final stored = await SecureStore.getBlob('ratchet:$kxId');
+    if (stored == null) {
+      throw StateError('no key-exchange session with $otherUserId in group $groupId yet — message them in the group chat first');
+    }
+    final session = await RatchetSession.fromJson(jsonDecode(stored) as Map<String, dynamic>);
+    _kxSessions[kxId] = session;
+    return session;
+  }
+
+  /// Call signaling (offer/answer/ice/mute) between two members of a group
+  /// call is end-to-end encrypted through the SAME pairwise key-exchange
+  /// ratchet already established for sender-key distribution — no separate
+  /// passphrase prompt needed as long as the two have exchanged at least
+  /// one group message/rekey before (which a call between existing chat
+  /// members already implies).
+  Future<RatchetMessage> encryptForCall({required String groupId, required String myUserId, required String otherUserId, required String plaintext}) async {
+    final session = await _loadExistingKx(groupId, myUserId, otherUserId);
+    final message = await session.encrypt(Uint8List.fromList(utf8.encode(plaintext)));
+    await _persistKx(groupId, myUserId, otherUserId, session);
+    return message;
+  }
+
+  Future<String> decryptForCall({required String groupId, required String myUserId, required String otherUserId, required Uint8List header, required Uint8List ciphertext}) async {
+    final session = await _loadExistingKx(groupId, myUserId, otherUserId);
+    final plaintext = await session.decrypt(header, ciphertext);
+    await _persistKx(groupId, myUserId, otherUserId, session);
+    return utf8.decode(plaintext);
+  }
+
   Future<bool> hasPersistedOwnKey(String groupId) async => (await SecureStore.getBlob('senderkey-own:$groupId')) != null;
 
   Future<void> restore(String groupId, List<String> memberIds) async {
@@ -148,4 +181,15 @@ class GroupSessionManager {
   }
 
   bool hasOwnKey(String groupId) => _ownKeys.containsKey(groupId);
+
+  /// Call after importing a device-transfer snapshot alongside
+  /// CryptoSessionManager.reloadAfterTransfer() — any group key-exchange
+  /// session cached in memory was established under this device's
+  /// now-discarded identity and must be re-derived from the transferred
+  /// state on disk instead.
+  void clearCaches() {
+    _kxSessions.clear();
+    _ownKeys.clear();
+    _peerKeys.clear();
+  }
 }

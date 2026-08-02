@@ -32,12 +32,28 @@ class CryptoSessionManager {
     }
     _identity = await X25519KeyPair.generate();
     await _persistIdentity();
-    await api.uploadPrekeys({
-      'signed_key_id': 1,
-      'signed_public_key': base64Encode(_identity!.publicKeyBytes),
-      'signature': '',
-      'one_time_keys': [],
-    });
+    await _uploadIdentityPublicKey();
+  }
+
+  Future<void> _uploadIdentityPublicKey() => api.uploadPrekeys({
+        'signed_key_id': 1,
+        'signed_public_key': base64Encode(_identity!.publicKeyBytes),
+        'signature': '',
+        'one_time_keys': [],
+      });
+
+  /// Call after importing a device-transfer snapshot: the snapshot replaces
+  /// this device's local identity keypair and ratchet sessions with the
+  /// source device's, but by the time a transfer runs this device has
+  /// likely already generated (and uploaded to the server) its own fresh
+  /// identity on first launch. Without re-uploading here, the server keeps
+  /// pointing peers at that now-discarded key while this device holds the
+  /// transferred one — breaking ECDH for everyone talking to this account.
+  Future<void> reloadAfterTransfer() async {
+    _identity = null;
+    _sessions.clear();
+    await ensureIdentity();
+    await _uploadIdentityPublicKey();
   }
 
   // When the app lock is enabled, the identity private key is encrypted at

@@ -19,7 +19,7 @@ func Load() Config {
 		RedisAddr:   getEnv("REDIS_ADDR", "localhost:6379"),
 		JWTSecret:   getEnv("JWT_SECRET", "dev-secret-change-me"),
 		NodeName:    getEnv("NODE_NAME", "Bully Node"),
-		TURNHost:    getEnv("TURN_HOST", "127.0.0.1"),
+		TURNHost:    getEnv("TURN_HOST", ""),
 		TURNSecret:  getEnv("TURN_SECRET", "dev-turn-secret-change-me"),
 	}
 }

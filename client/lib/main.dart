@@ -1,11 +1,15 @@
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
 import 'core/app_services.dart';
 import 'core/avatar/avatar_store.dart';
+import 'core/background/background_keepalive.dart';
+import 'core/background/call_notifier.dart';
 import 'core/crypto/crypto_selftest.dart';
 import 'core/desktop_title_bar.dart';
+import 'core/desktop_tray.dart';
 import 'core/desktop_window.dart';
 import 'core/media/media_cache.dart';
 import 'core/network/api_client.dart';
@@ -13,6 +17,7 @@ import 'core/network/bandwidth_tracker.dart';
 import 'core/network/node_trust_banner.dart';
 import 'core/node_store.dart';
 import 'core/security/app_lock.dart';
+import 'core/security/screen_privacy.dart';
 import 'core/storage/chat_history_store.dart';
 import 'core/storage/secure_store.dart';
 import 'features/auth/auth_screen.dart';
@@ -45,6 +50,7 @@ void main() async {
 
   await DesktopWindow.ensureInitialized();
   await DesktopWindow.setTitle('Bully');
+  await DesktopTray.instance.init();
   await ChatHistoryStore.init();
   await NodeStore.init();
   await BandwidthTracker.init();
@@ -52,6 +58,8 @@ void main() async {
   await AvatarStore.init();
   await ThemeController.instance.init();
   await AppLock.instance.init();
+  await ScreenPrivacy.instance.load();
+  await CallNotifier.init();
   runApp(const BullyApp());
 }
 
@@ -169,6 +177,17 @@ class _BullyAppState extends State<BullyApp> {
                       ),
                       Positioned.fill(
                         child: ListenableBuilder(
+                          listenable: ScreenPrivacy.instance,
+                          builder: (context, _) => AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 200),
+                            child: (ScreenPrivacy.instance.hideAll && ScreenPrivacy.instance.isCaptured)
+                                ? const _ScreenPrivacyOverlay(key: ValueKey('captured'))
+                                : const SizedBox.shrink(key: ValueKey('not-captured')),
+                          ),
+                        ),
+                      ),
+                      Positioned.fill(
+                        child: ListenableBuilder(
                           listenable: AppLock.instance,
                           builder: (context, _) => AnimatedSwitcher(
                             duration: const Duration(milliseconds: 300),
@@ -214,6 +233,7 @@ class _RootRouterState extends State<_RootRouter> {
     if (token != null && mounted) {
       await services.ws.connect(token);
       unawaited(startBackgroundSyncForCurrentAccount(services));
+      unawaited(BackgroundKeepAlive.start());
     }
     setState(() {
       _authenticated = token != null;
@@ -228,5 +248,26 @@ class _RootRouterState extends State<_RootRouter> {
     }
     if (!_authenticated) return const AuthScreen();
     return const AppShell();
+  }
+}
+
+class _ScreenPrivacyOverlay extends StatelessWidget {
+  const _ScreenPrivacyOverlay({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
+        child: Container(
+          color: Colors.black.withValues(alpha: 0.85),
+          alignment: Alignment.center,
+          child: const Text(
+            'Bully',
+            style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold, letterSpacing: 2),
+          ),
+        ),
+      ),
+    );
   }
 }

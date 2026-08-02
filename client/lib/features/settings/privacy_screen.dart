@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/app_services.dart';
 import '../../core/security/app_lock.dart';
+import '../../core/security/screen_privacy.dart';
 import '../../theme/bully_theme.dart';
 
 class PrivacyScreen extends StatefulWidget {
@@ -72,6 +73,41 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
                 'Ключ шифрования переписки хранится отдельно и шифруется этим паролем — сам пароль не используется '
                 'как ключ напрямую, только для разблокировки доступа к уже сгенерированному ключу.',
                 style: TextStyle(color: BullyPalette.of(context).textMuted, fontSize: 12),
+              ),
+            ),
+            const SizedBox(height: 16),
+            ListenableBuilder(
+              listenable: ScreenPrivacy.instance,
+              builder: (context, _) => Container(
+                decoration: BoxDecoration(
+                  color: BullyPalette.of(context).bgSecondary,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: BullyPalette.of(context).cardBorder),
+                ),
+                child: Column(
+                  children: [
+                    SwitchListTile(
+                      title: Text('Скрыть всё при записи/демонстрации экрана', style: TextStyle(color: BullyPalette.of(context).textNormal)),
+                      subtitle: Text(
+                        'На Android блокирует захват окна другими приложениями. На iOS во время записи/AirPlay '
+                        'экран заменяется размытой заглушкой.',
+                        style: TextStyle(color: BullyPalette.of(context).textMuted, fontSize: 12),
+                      ),
+                      value: ScreenPrivacy.instance.hideAll,
+                      onChanged: (v) => ScreenPrivacy.instance.setHideAll(v),
+                    ),
+                    Divider(color: BullyPalette.of(context).cardBorder, height: 1),
+                    SwitchListTile(
+                      title: Text('Скрывать код переноса чатов', style: TextStyle(color: BullyPalette.of(context).textNormal)),
+                      subtitle: Text(
+                        'Код и QR в "Перенести чаты" скрыты по умолчанию, показываются только по нажатию.',
+                        style: TextStyle(color: BullyPalette.of(context).textMuted, fontSize: 12),
+                      ),
+                      value: ScreenPrivacy.instance.hideTransferCodes,
+                      onChanged: (v) => ScreenPrivacy.instance.setHideTransferCodes(v),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],

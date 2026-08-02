@@ -41,15 +41,16 @@ class AppServices extends InheritedWidget {
     final resolvedApi = api ?? ApiClient(nodeUrl);
     final resolvedWs = ws ?? WsClient(nodeUrl);
     final resolvedCrypto = CryptoSessionManager(resolvedApi);
+    final resolvedGroupCrypto = GroupSessionManager(resolvedApi, resolvedWs, () => resolvedCrypto.identity);
     return AppServices._(
       key: key,
       child: child,
       api: resolvedApi,
       ws: resolvedWs,
       crypto: resolvedCrypto,
-      groupCrypto: GroupSessionManager(resolvedApi, resolvedWs, () => resolvedCrypto.identity),
+      groupCrypto: resolvedGroupCrypto,
       sync: BackgroundSyncService(),
-      calls: CallController(resolvedApi, resolvedWs, resolvedCrypto),
+      calls: CallController(resolvedApi, resolvedWs, resolvedCrypto, resolvedGroupCrypto),
       avatars: AvatarService(resolvedWs, resolvedCrypto),
       inbox: MessageInbox(resolvedWs, resolvedCrypto),
     );

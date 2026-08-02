@@ -59,6 +59,16 @@
 		<string>_bully-transfer._tcp</string>
 		<string>_bully-sync._tcp</string>
 	</array>
+	<!-- Best-effort background connection for calls without push (no
+	     PushKit/APNs — we have no paid Apple developer account). iOS still
+	     suspends the socket much sooner than Android's foreground service
+	     equivalent; this only extends survival while a call/audio session
+	     is genuinely active, not indefinite background delivery. -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+		<string>voip</string>
+	</array>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

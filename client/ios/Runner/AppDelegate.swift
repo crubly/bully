@@ -36,5 +36,30 @@ import UIKit
         result(FlutterMethodNotImplemented)
       }
     }
+
+    // iOS has no API to block another app/OS surface from capturing our
+    // window (no FLAG_SECURE equivalent for arbitrary content) — the best
+    // available mitigation is detecting an active screen recording/AirPlay
+    // mirror via UIScreen.isCaptured and telling Dart to swap in a blurred
+    // placeholder for as long as it stays true.
+    let screenPrivacyChannel = FlutterMethodChannel(
+      name: "bully/screen_privacy",
+      binaryMessenger: engine.binaryMessenger
+    )
+    screenPrivacyChannel.setMethodCallHandler { call, result in
+      switch call.method {
+      case "setSecure":
+        result(nil)
+      default:
+        result(FlutterMethodNotImplemented)
+      }
+    }
+    NotificationCenter.default.addObserver(
+      forName: UIScreen.capturedDidChangeNotification,
+      object: nil,
+      queue: .main
+    ) { _ in
+      screenPrivacyChannel.invokeMethod("captureStateChanged", arguments: UIScreen.main.isCaptured)
+    }
   }
 }

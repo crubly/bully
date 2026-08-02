@@ -6,6 +6,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/app_services.dart';
+import '../../core/background/call_notifier.dart';
 import '../../core/calls/call_controller.dart';
 import '../../core/network/ws_client.dart';
 import '../../core/security/app_lock.dart';
@@ -13,6 +14,7 @@ import '../../core/storage/secure_store.dart';
 import '../../theme/bully_theme.dart';
 import '../../theme/theme_controller.dart';
 import '../calls/call_screen.dart';
+import '../calls/compact_call_bar.dart';
 import '../dm/dm_chat_screen.dart';
 import '../dm/new_dm_dialog.dart';
 import '../groups/group_chat_screen.dart';
@@ -103,13 +105,20 @@ class _AppShellState extends State<AppShell> {
   void _listenForIncomingCalls() {
     _incomingCallSub = AppServices.of(context).calls.incomingCalls.listen((call) async {
       final peer = await AppServices.of(context).api.getUser(call.fromUserId);
+      unawaited(CallNotifier.showIncomingCall(
+        title: call.isGroup ? 'Групповой звонок' : 'Входящий звонок',
+        body: '@${peer['username']}',
+      ));
       if (!mounted) return;
       final accept = await showDialog<bool>(
         context: context,
         barrierDismissible: false,
         builder: (context) => AlertDialog(
           backgroundColor: BullyPalette.of(context).bgSecondary,
-          title: Text('Входящий звонок от @${peer['username']}', style: TextStyle(color: BullyPalette.of(context).textNormal)),
+          title: Text(
+            call.isGroup ? 'Групповой звонок (@${peer['username']} уже на линии)' : 'Входящий звонок от @${peer['username']}',
+            style: TextStyle(color: BullyPalette.of(context).textNormal),
+          ),
           content: Text(call.video ? 'Видеозвонок' : 'Аудиозвонок', style: TextStyle(color: BullyPalette.of(context).textMuted)),
           actions: [
             TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Отклонить')),
@@ -117,16 +126,41 @@ class _AppShellState extends State<AppShell> {
           ],
         ),
       );
+      unawaited(CallNotifier.cancelIncomingCall());
       final services = AppServices.of(context);
       if (accept == true) {
         await services.calls.acceptCall(call);
-        if (mounted) {
+        if (!mounted) return;
+        if (useCompactCallUi(context)) {
+          _openConversation(call.conversationId);
+        } else {
           Navigator.of(context).push(MaterialPageRoute(builder: (_) => CallScreen(incoming: call)));
         }
       } else {
         await services.calls.declineCall(call);
       }
     });
+  }
+
+  void _openConversation(String conversationId) {
+    _ConversationEntry? entry;
+    for (final e in _entries) {
+      if (e.conversationId == conversationId) {
+        entry = e;
+        break;
+      }
+    }
+    final found = entry;
+    if (found == null) return;
+    if (_isWide(context)) {
+      setState(() => _selectedDesktop = found);
+      return;
+    }
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => found.kind == 'dm'
+          ? DmChatScreen(conversationId: found.conversationId, peerUserId: found.peerUserId ?? '', peerUsername: found.label)
+          : GroupChatScreen(conversationId: found.conversationId, groupId: found.groupId!, groupName: found.label),
+    ));
   }
 
   @override
