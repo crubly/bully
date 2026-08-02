@@ -19,6 +19,7 @@ import (
 	"bully/backend/internal/keys"
 	"bully/backend/internal/ratelimit"
 	"bully/backend/internal/relay"
+	"bully/backend/internal/selftest"
 	"bully/backend/internal/session"
 	"bully/backend/internal/user"
 	"bully/backend/internal/ws"
@@ -27,6 +28,10 @@ import (
 const maxRequestBody = 1 << 20
 
 func main() {
+	if err := selftest.RunCryptoSelfTest(); err != nil {
+		log.Fatalf("crypto self-test failed, refusing to start: %v", err)
+	}
+
 	cfg := config.Load()
 	ctx := context.Background()
 
@@ -68,8 +73,10 @@ func main() {
 	r.Get("/node/info", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]any{
-			"bully_node": true,
-			"name":       cfg.NodeName,
+			"bully_node":       true,
+			"name":             cfg.NodeName,
+			"crypto_selftest":  "passed",
+			"stores_plaintext": false,
 		})
 	})
 

@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import 'bandwidth_tracker.dart';
+import 'node_trust_monitor.dart';
 import 'padding.dart';
 
 class RelayEnvelope {
@@ -65,6 +66,7 @@ class WsClient {
   Future<void> connect(String token) async {
     _token = token;
     _closed = false;
+    NodeTrustMonitor.instance.bindNode(baseUrl);
     await _open();
   }
 
@@ -84,6 +86,7 @@ class WsClient {
   void _handleFrame(dynamic raw) {
     if (raw is! List<int>) return;
     BandwidthTracker.recordReceived(raw.length);
+    NodeTrustMonitor.instance.onRawFrame(raw.length);
     final decoded = WsPadding.decodeFrame(Uint8List.fromList(raw));
     if (decoded == null) return;
     _assembly.add(decoded.payload);
@@ -92,7 +95,9 @@ class WsClient {
     final bytes = _assembly.takeBytes();
     try {
       final json = jsonDecode(utf8.decode(bytes)) as Map<String, dynamic>;
-      _controller.add(RelayEnvelope.fromJson(json));
+      final envelope = RelayEnvelope.fromJson(json);
+      NodeTrustMonitor.instance.onEnvelope(envelope.type);
+      _controller.add(envelope);
     } catch (_) {
 
     }
@@ -129,6 +134,7 @@ class WsClient {
   }
 
   void send(RelayEnvelope env) {
+    if (NodeTrustMonitor.instance.compromised) return;
     _outbox.add(Uint8List.fromList(utf8.encode(jsonEncode(env.toOutboundJson()))));
   }
 

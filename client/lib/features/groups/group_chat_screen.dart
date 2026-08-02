@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../core/app_services.dart';
+import '../../core/network/node_trust_monitor.dart';
 import '../../core/network/ws_client.dart';
 import '../../core/storage/chat_history_store.dart';
 import '../../core/storage/secure_store.dart';
@@ -143,6 +144,13 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
   Future<void> _send() async {
     final text = _input.text.trim();
     if (text.isEmpty || !_ready) return;
+    if (NodeTrustMonitor.instance.compromised) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(NodeTrustMonitor.instance.reason ?? 'Нода скомпрометирована — действие заблокировано.'),
+        backgroundColor: BullyColors.danger,
+      ));
+      return;
+    }
     final services = AppServices.of(context);
     final group = await services.groupCrypto.encrypt(widget.groupId, text);
     services.ws.send(RelayEnvelope(

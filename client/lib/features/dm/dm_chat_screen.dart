@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../core/app_services.dart';
+import '../../core/network/node_trust_monitor.dart';
 import '../../core/network/ws_client.dart';
 import '../../core/storage/chat_history_store.dart';
 import '../../core/storage/secure_store.dart';
@@ -122,7 +123,17 @@ class _DmChatScreenState extends State<DmChatScreen> {
     }
   }
 
+  bool _blockIfCompromised() {
+    if (!NodeTrustMonitor.instance.compromised) return false;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(NodeTrustMonitor.instance.reason ?? 'Нода скомпрометирована — действие заблокировано.'),
+      backgroundColor: BullyColors.danger,
+    ));
+    return true;
+  }
+
   Future<void> _startCall({required bool video}) async {
+    if (_blockIfCompromised()) return;
     final services = AppServices.of(context);
     await services.calls.startCall(conversationId: widget.conversationId, peerUserId: widget.peerUserId, video: video);
     if (mounted) {
@@ -133,6 +144,7 @@ class _DmChatScreenState extends State<DmChatScreen> {
   Future<void> _send() async {
     final text = _input.text.trim();
     if (text.isEmpty || !_ready) return;
+    if (_blockIfCompromised()) return;
     final services = AppServices.of(context);
     final message = await services.crypto.encrypt(widget.conversationId, text);
     services.ws.send(RelayEnvelope(

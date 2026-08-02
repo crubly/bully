@@ -47,6 +47,32 @@ class _NodePickerScreenState extends State<NodePickerScreen> {
     final node = BullyNode(name, url);
     await NodeStore.add(node);
     await NodeStore.setActive(url);
+    final stored = NodeStore.active() ?? node;
+    if (!mounted) return;
+    if (stored.flaggedCompromised) {
+      final proceed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: BullyPalette.of(context).bgSecondary,
+          title: const Text('Нода помечена как скомпрометированная', style: TextStyle(color: BullyColors.danger)),
+          content: Text(
+            stored.flagReason ?? 'Эта нода ранее нарушала протокол шифрования/паддинга. Продолжать небезопасно.',
+            style: TextStyle(color: BullyPalette.of(context).textNormal),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Отмена')),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Всё равно продолжить', style: TextStyle(color: BullyColors.danger)),
+            ),
+          ],
+        ),
+      );
+      if (proceed != true) {
+        setState(() => _checking = false);
+        return;
+      }
+    }
     widget.onNodeReady(node);
   }
 
@@ -91,9 +117,12 @@ class _NodePickerScreenState extends State<NodePickerScreen> {
                   const SizedBox(height: 24),
                   Align(alignment: Alignment.centerLeft, child: Text('Известные ноды:', style: TextStyle(color: BullyPalette.of(context).textMuted))),
                   ..._known.map((n) => ListTile(
-                        leading: Icon(Icons.dns, color: BullyColors.blurple),
+                        leading: Icon(n.flaggedCompromised ? Icons.gpp_bad : Icons.dns, color: n.flaggedCompromised ? BullyColors.danger : BullyColors.blurple),
                         title: Text(n.name, style: TextStyle(color: BullyPalette.of(context).textNormal)),
-                        subtitle: Text(n.url, style: TextStyle(color: BullyPalette.of(context).textMuted)),
+                        subtitle: Text(
+                          n.flaggedCompromised ? 'Скомпрометирована — ${n.url}' : n.url,
+                          style: TextStyle(color: n.flaggedCompromised ? BullyColors.danger : BullyPalette.of(context).textMuted),
+                        ),
                         onTap: () {
                           _urlController.text = n.url;
                           _check();

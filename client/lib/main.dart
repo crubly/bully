@@ -4,11 +4,13 @@ import 'package:flutter/material.dart';
 
 import 'core/app_services.dart';
 import 'core/avatar/avatar_store.dart';
+import 'core/crypto/crypto_selftest.dart';
 import 'core/desktop_title_bar.dart';
 import 'core/desktop_window.dart';
 import 'core/media/media_cache.dart';
 import 'core/network/api_client.dart';
 import 'core/network/bandwidth_tracker.dart';
+import 'core/network/node_trust_banner.dart';
 import 'core/node_store.dart';
 import 'core/storage/chat_history_store.dart';
 import 'core/storage/secure_store.dart';
@@ -31,6 +33,14 @@ void main() async {
         ),
       );
   WidgetsFlutterBinding.ensureInitialized();
+
+  try {
+    await CryptoSelfTest.runOrThrow();
+  } catch (e) {
+    runApp(_CryptoSelfTestFailedApp(error: '$e'));
+    return;
+  }
+
   await DesktopWindow.ensureInitialized();
   await DesktopWindow.setTitle('Bully');
   await ChatHistoryStore.init();
@@ -40,6 +50,47 @@ void main() async {
   await AvatarStore.init();
   await ThemeController.instance.init();
   runApp(const BullyApp());
+}
+
+class _CryptoSelfTestFailedApp extends StatelessWidget {
+  final String error;
+  const _CryptoSelfTestFailedApp({required this.error});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        backgroundColor: const Color(0xFF1E1F22),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.gpp_bad, color: Colors.red, size: 48),
+                const SizedBox(height: 16),
+                const Text(
+                  'Проверка шифрования провалилась',
+                  style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Криптографические примитивы ведут себя не так, как ожидается. '
+                  'Запускать приложение небезопасно.',
+                  style: TextStyle(color: Colors.white70),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                Text(error, style: const TextStyle(color: Colors.white38, fontSize: 11), textAlign: TextAlign.center),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// AppServices must wrap the Navigator itself (via MaterialApp.builder), not
@@ -100,6 +151,7 @@ class _BullyAppState extends State<BullyApp> {
                     Column(
                       children: [
                         const DesktopTitleBar(),
+                        const NodeTrustBanner(),
                         Expanded(
                           child: AppServices(
                             key: ValueKey(node.url),
