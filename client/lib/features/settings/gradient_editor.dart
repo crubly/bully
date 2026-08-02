@@ -15,25 +15,47 @@ class GradientEditor extends StatefulWidget {
   State<GradientEditor> createState() => _GradientEditorState();
 }
 
+bool _samePoints(List<AccentPoint> a, List<AccentPoint> b) {
+  if (a.length != b.length) return false;
+  for (var i = 0; i < a.length; i++) {
+    if (a[i].position != b[i].position || a[i].color.toARGB32() != b[i].color.toARGB32()) return false;
+  }
+  return true;
+}
+
 class _GradientEditorState extends State<GradientEditor> {
   late List<AccentPoint> _points = List.of(widget.initial);
+  List<AccentPoint>? _lastReported;
   final _squareKey = GlobalKey();
+
+  @override
+  void didUpdateWidget(covariant GradientEditor oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!_samePoints(widget.initial, _points) && (_lastReported == null || !_samePoints(widget.initial, _lastReported!))) {
+      _points = List.of(widget.initial);
+    }
+  }
+
+  void _report() {
+    _lastReported = List.of(_points);
+    widget.onChanged(_points);
+  }
 
   void _addPoint() {
     setState(() => _points = [..._points, AccentPoint(const Offset(0.5, 0.5), _points.last.color)]);
-    widget.onChanged(_points);
+    _report();
   }
 
   void _removePoint(int i) {
     if (_points.length <= 2) return;
     setState(() => _points = [..._points]..removeAt(i));
-    widget.onChanged(_points);
+    _report();
   }
 
   void _movePoint(int i, Offset newPos) {
     final clamped = Offset(newPos.dx.clamp(0.0, 1.0), newPos.dy.clamp(0.0, 1.0));
     setState(() => _points = [..._points]..[i] = AccentPoint(clamped, _points[i].color));
-    widget.onChanged(_points);
+    _report();
   }
 
   Future<void> _pickColor(int i) async {
@@ -43,7 +65,7 @@ class _GradientEditorState extends State<GradientEditor> {
     );
     if (color == null) return;
     setState(() => _points = [..._points]..[i] = AccentPoint(_points[i].position, color));
-    widget.onChanged(_points);
+    _report();
   }
 
   @override
@@ -68,22 +90,25 @@ class _GradientEditorState extends State<GradientEditor> {
                 Positioned(
                   left: _points[i].position.dx * widget.size - 14,
                   top: _points[i].position.dy * widget.size - 14,
-                  child: GestureDetector(
-                    onPanUpdate: (d) {
+                  child: Listener(
+                    behavior: HitTestBehavior.opaque,
+                    onPointerMove: (e) {
                       final box = _squareKey.currentContext!.findRenderObject() as RenderBox;
-                      final local = box.globalToLocal(d.globalPosition);
+                      final local = box.globalToLocal(e.position);
                       _movePoint(i, Offset(local.dx / widget.size, local.dy / widget.size));
                     },
-                    onTap: () => _pickColor(i),
-                    onLongPress: () => _removePoint(i),
-                    child: Container(
-                      width: 28,
-                      height: 28,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: _points[i].color,
-                        border: Border.all(color: Colors.white, width: 3),
-                        boxShadow: const [BoxShadow(color: Colors.black45, blurRadius: 4)],
+                    child: GestureDetector(
+                      onTap: () => _pickColor(i),
+                      onLongPress: () => _removePoint(i),
+                      child: Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: _points[i].color,
+                          border: Border.all(color: Colors.white, width: 3),
+                          boxShadow: const [BoxShadow(color: Colors.black45, blurRadius: 4)],
+                        ),
                       ),
                     ),
                   ),

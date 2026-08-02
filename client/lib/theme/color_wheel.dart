@@ -41,8 +41,22 @@ class HsvColorWheel extends StatefulWidget {
 
 class _HsvColorWheelState extends State<HsvColorWheel> {
   late HSVColor _hsv = HSVColor.fromColor(widget.initial);
+  Color? _lastReported;
+  final _wheelKey = GlobalKey();
 
-  void _handleTap(Offset local) {
+  @override
+  void didUpdateWidget(covariant HsvColorWheel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final current = _hsv.toColor();
+    if (widget.initial.toARGB32() != current.toARGB32() &&
+        (_lastReported == null || widget.initial.toARGB32() != _lastReported!.toARGB32())) {
+      _hsv = HSVColor.fromColor(widget.initial);
+    }
+  }
+
+  void _handleTap(Offset global) {
+    final box = _wheelKey.currentContext!.findRenderObject() as RenderBox;
+    final local = box.globalToLocal(global);
     final center = Offset(widget.size / 2, widget.size / 2);
     final d = local - center;
     final radius = widget.size / 2;
@@ -52,6 +66,7 @@ class _HsvColorWheelState extends State<HsvColorWheel> {
     if (hue < 0) hue += 360;
     final saturation = dist / radius;
     setState(() => _hsv = _hsv.withHue(hue).withSaturation(saturation.toDouble()));
+    _lastReported = _hsv.toColor();
     widget.onChanged(_hsv.toColor());
   }
 
@@ -65,10 +80,12 @@ class _HsvColorWheelState extends State<HsvColorWheel> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        GestureDetector(
-          onPanDown: (d) => _handleTap(d.localPosition),
-          onPanUpdate: (d) => _handleTap(d.localPosition),
+        Listener(
+          behavior: HitTestBehavior.opaque,
+          onPointerDown: (e) => _handleTap(e.position),
+          onPointerMove: (e) => _handleTap(e.position),
           child: SizedBox(
+            key: _wheelKey,
             width: widget.size,
             height: widget.size,
             child: Stack(
@@ -100,6 +117,7 @@ class _HsvColorWheelState extends State<HsvColorWheel> {
             activeColor: _hsv.toColor(),
             onChanged: (v) {
               setState(() => _hsv = _hsv.withValue(v));
+              _lastReported = _hsv.toColor();
               widget.onChanged(_hsv.toColor());
             },
           ),

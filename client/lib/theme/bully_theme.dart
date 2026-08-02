@@ -31,9 +31,9 @@ class _TintedBackgrounds {
 _TintedBackgrounds _backgroundsFor(Brightness brightness) {
   final hue = HSVColor.fromColor(ThemeController.instance.accentColor).hue;
   if (brightness == Brightness.dark) {
-    return _TintedBackgrounds(_tinted(hue, 0.14, 0.215), _tinted(hue, 0.16, 0.19), _tinted(hue, 0.18, 0.13));
+    return _TintedBackgrounds(_tinted(hue, 0.38, 0.22), _tinted(hue, 0.42, 0.19), _tinted(hue, 0.46, 0.135));
   }
-  return _TintedBackgrounds(_tinted(hue, 0.03, 1.0), _tinted(hue, 0.05, 0.955), _tinted(hue, 0.07, 0.895));
+  return _TintedBackgrounds(_tinted(hue, 0.12, 1.0), _tinted(hue, 0.16, 0.955), _tinted(hue, 0.2, 0.895));
 }
 
 class BullyPalette {
