@@ -1,6 +1,8 @@
 name: Build unsigned macOS DMG
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 jobs:
