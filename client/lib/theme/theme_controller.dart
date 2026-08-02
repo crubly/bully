@@ -53,11 +53,15 @@ class ThemeController extends ChangeNotifier {
   ThemeMode _mode = ThemeMode.dark;
   ThemeMode get mode => _mode;
 
+  // Акцентный цвет: solid color for buttons/icons/highlights. Independent
+  // from the theme gradient below — setting one never touches the other.
   Color? _accentColor;
-  List<AccentPoint>? _accentGradient;
+  Color get accentColor => _accentColor ?? defaultAccentColor;
 
-  Color get accentColor => _accentGradient?.first.color ?? _accentColor ?? defaultAccentColor;
-  List<AccentPoint>? get accentGradient => _accentGradient;
+  // Тема: gradient that tints the whole messenger's background surfaces.
+  // Independent from the accent color above.
+  List<AccentPoint>? _themeGradient;
+  List<AccentPoint>? get themeGradient => _themeGradient;
 
   Future<void> init() async {
     _box = await Hive.openBox('appearance');
@@ -70,9 +74,9 @@ class ThemeController extends ChangeNotifier {
 
     final accentValue = _box.get('accent_color') as int?;
     if (accentValue != null) _accentColor = Color(accentValue);
-    final gradientRaw = (_box.get('accent_gradient_points') as List?)?.cast<Map>();
+    final gradientRaw = (_box.get('theme_gradient_points') as List?)?.cast<Map>();
     if (gradientRaw != null && gradientRaw.length >= 2) {
-      _accentGradient = gradientRaw.map(AccentPoint.fromMap).toList();
+      _themeGradient = gradientRaw.map(AccentPoint.fromMap).toList();
     }
   }
 
@@ -89,31 +93,34 @@ class ThemeController extends ChangeNotifier {
 
   Future<void> setAccentColor(Color color) async {
     _accentColor = color;
-    _accentGradient = null;
     await _box.put('accent_color', color.toARGB32());
-    await _box.delete('accent_gradient_points');
     notifyListeners();
   }
 
-  Future<void> setAccentGradientPoints(List<AccentPoint> points) async {
-    _accentGradient = points;
-    await _box.put('accent_gradient_points', points.map((p) => p.toMap()).toList());
+  Future<void> resetAccentColor() async {
+    _accentColor = null;
+    await _box.delete('accent_color');
+    notifyListeners();
+  }
+
+  Future<void> setThemeGradientPoints(List<AccentPoint> points) async {
+    _themeGradient = points;
+    await _box.put('theme_gradient_points', points.map((p) => p.toMap()).toList());
+    notifyListeners();
+  }
+
+  Future<void> resetThemeGradient() async {
+    _themeGradient = null;
+    await _box.delete('theme_gradient_points');
     notifyListeners();
   }
 
   Future<void> applyPreset(AccentPreset preset) async {
     if (preset.gradient != null) {
-      await setAccentGradientPoints(preset.gradient!);
+      await setThemeGradientPoints(preset.gradient!);
     } else {
       await setAccentColor(preset.color!);
+      await resetThemeGradient();
     }
-  }
-
-  Future<void> resetAccent() async {
-    _accentColor = null;
-    _accentGradient = null;
-    await _box.delete('accent_color');
-    await _box.delete('accent_gradient_points');
-    notifyListeners();
   }
 }

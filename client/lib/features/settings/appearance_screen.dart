@@ -24,7 +24,7 @@ class _AppearanceScreenState extends State<AppearanceScreen> {
     return ListenableBuilder(
       listenable: ThemeController.instance,
       builder: (context, _) {
-        final accentGradient = ThemeController.instance.accentGradient;
+        final accentGradient = ThemeController.instance.themeGradient;
         final accentColor = ThemeController.instance.accentColor;
         return ListView(
           padding: const EdgeInsets.all(12),
@@ -72,10 +72,16 @@ class _AppearanceScreenState extends State<AppearanceScreen> {
                         .where((p) => p.color != null)
                         .map((p) => _ColorSwatch(
                               color: p.color!,
-                              selected: accentGradient == null && accentColor.toARGB32() == p.color!.toARGB32(),
+                              selected: accentColor.toARGB32() == p.color!.toARGB32(),
                               onTap: () => ThemeController.instance.setAccentColor(p.color!),
                             ))
                         .toList(),
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: () => ThemeController.instance.resetAccentColor(),
+                    icon: const Icon(Icons.restart_alt, size: 18),
+                    label: const Text('Сбросить'),
                   ),
                 ],
               ),
@@ -119,7 +125,7 @@ class _AppearanceScreenState extends State<AppearanceScreen> {
                               AccentPoint(const Offset(0, 0), accentColor),
                               AccentPoint(const Offset(1, 1), const Color(0xFFEB459E)),
                             ],
-                        onChanged: (points) => ThemeController.instance.setAccentGradientPoints(points),
+                        onChanged: (points) => ThemeController.instance.setThemeGradientPoints(points),
                       ),
                     ),
                   if (_tab == _ThemeTab.presets)
@@ -135,7 +141,7 @@ class _AppearanceScreenState extends State<AppearanceScreen> {
                     ),
                   const SizedBox(height: 12),
                   OutlinedButton.icon(
-                    onPressed: () => ThemeController.instance.resetAccent(),
+                    onPressed: () => ThemeController.instance.resetThemeGradient(),
                     icon: const Icon(Icons.restart_alt, size: 18),
                     label: const Text('Сбросить'),
                   ),

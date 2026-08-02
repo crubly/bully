@@ -298,7 +298,7 @@ class _ProfileHeaderTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final avatarBytes = AppServices.of(context).avatars.ownAvatarBytes();
-    final gradient = ThemeController.instance.accentGradient;
+    final gradient = ThemeController.instance.themeGradient;
     return ClipRRect(
       borderRadius: BorderRadius.circular(20),
       child: Stack(

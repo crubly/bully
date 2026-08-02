@@ -28,12 +28,40 @@ class _TintedBackgrounds {
   const _TintedBackgrounds(this.bgPrimary, this.bgSecondary, this.bgTertiary);
 }
 
-_TintedBackgrounds _backgroundsFor(Brightness brightness) {
-  final hue = HSVColor.fromColor(ThemeController.instance.accentColor).hue;
-  if (brightness == Brightness.dark) {
-    return _TintedBackgrounds(_tinted(hue, 0.38, 0.22), _tinted(hue, 0.42, 0.19), _tinted(hue, 0.46, 0.135));
+Color? _themeBlend() {
+  final points = ThemeController.instance.themeGradient;
+  if (points == null || points.isEmpty) return null;
+  double r = 0, g = 0, b = 0;
+  for (final p in points) {
+    r += p.color.r;
+    g += p.color.g;
+    b += p.color.b;
   }
-  return _TintedBackgrounds(_tinted(hue, 0.12, 1.0), _tinted(hue, 0.16, 0.955), _tinted(hue, 0.2, 0.895));
+  final n = points.length;
+  return Color.from(alpha: 1, red: r / n, green: g / n, blue: b / n);
+}
+
+_TintedBackgrounds _backgroundsFor(Brightness brightness) {
+  final blend = _themeBlend();
+  final dark = brightness == Brightness.dark;
+  if (blend == null) {
+    return dark
+        ? const _TintedBackgrounds(BullyColors.bgPrimary, BullyColors.bgSecondary, BullyColors.bgTertiary)
+        : const _TintedBackgrounds(BullyColors.bgPrimaryLight, BullyColors.bgSecondaryLight, BullyColors.bgTertiaryLight);
+  }
+  final hsv = HSVColor.fromColor(blend);
+  if (dark) {
+    return _TintedBackgrounds(
+      _tinted(hsv.hue, hsv.saturation, 0.24),
+      _tinted(hsv.hue, hsv.saturation, 0.20),
+      _tinted(hsv.hue, hsv.saturation, 0.14),
+    );
+  }
+  return _TintedBackgrounds(
+    _tinted(hsv.hue, hsv.saturation * 0.55, 1.0),
+    _tinted(hsv.hue, hsv.saturation * 0.6, 0.955),
+    _tinted(hsv.hue, hsv.saturation * 0.65, 0.895),
+  );
 }
 
 class BullyPalette {

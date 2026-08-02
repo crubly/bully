@@ -85,7 +85,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _body(BuildContext context) {
     final avatarBytes = AppServices.of(context).avatars.ownAvatarBytes();
-    final gradient = ThemeController.instance.accentGradient;
+    final gradient = ThemeController.instance.themeGradient;
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
