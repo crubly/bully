@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'core/app_services.dart';
 import 'core/avatar/avatar_store.dart';
+import 'core/desktop_title_bar.dart';
 import 'core/desktop_window.dart';
 import 'core/media/media_cache.dart';
 import 'core/network/api_client.dart';
@@ -96,10 +97,17 @@ class _BullyAppState extends State<BullyApp> {
             : (context, child) => Stack(
                   children: [
                     const Positioned.fill(child: ThemeBackdrop()),
-                    AppServices(
-                      key: ValueKey(node.url),
-                      nodeUrl: node.url,
-                      child: child!,
+                    Column(
+                      children: [
+                        const DesktopTitleBar(),
+                        Expanded(
+                          child: AppServices(
+                            key: ValueKey(node.url),
+                            nodeUrl: node.url,
+                            child: child!,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),

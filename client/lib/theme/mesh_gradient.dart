@@ -24,7 +24,16 @@ Color _blendAt(List<AccentPoint> points, double x, double y) {
   return Color.from(alpha: 1, red: r / totalWeight, green: g / totalWeight, blue: b / totalWeight);
 }
 
-Future<ui.Image> renderMeshGradient(List<AccentPoint> points) {
+String _signatureOf(List<AccentPoint> points) =>
+    points.map((p) => '${p.position.dx.toStringAsFixed(4)},${p.position.dy.toStringAsFixed(4)},${p.color.toARGB32()}').join(';');
+
+final _imageCache = <String, ui.Image>{};
+
+Future<ui.Image> renderMeshGradient(List<AccentPoint> points) async {
+  final signature = _signatureOf(points);
+  final cached = _imageCache[signature];
+  if (cached != null) return cached;
+
   final data = Uint8List(_resolution * _resolution * 4);
   for (var py = 0; py < _resolution; py++) {
     final ny = py / (_resolution - 1);
@@ -40,8 +49,12 @@ Future<ui.Image> renderMeshGradient(List<AccentPoint> points) {
   }
   final completer = Completer<ui.Image>();
   ui.decodeImageFromPixels(data, _resolution, _resolution, ui.PixelFormat.rgba8888, completer.complete);
-  return completer.future;
+  final image = await completer.future;
+  _imageCache[signature] = image;
+  return image;
 }
+
+ui.Image? cachedMeshImage(List<AccentPoint> points) => _imageCache[_signatureOf(points)];
 
 class _MeshImagePainter extends CustomPainter {
   final ui.Image image;
@@ -74,6 +87,8 @@ class _MeshGradientBoxState extends State<MeshGradientBox> {
   @override
   void initState() {
     super.initState();
+    final pts = widget.points;
+    if (pts != null && pts.isNotEmpty) _image = cachedMeshImage(pts);
     _render();
   }
 

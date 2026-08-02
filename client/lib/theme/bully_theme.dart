@@ -78,21 +78,6 @@ class BullyPalette {
 
 const _radius = 12.0;
 
-class _InstantPageTransitionsBuilder extends PageTransitionsBuilder {
-  const _InstantPageTransitionsBuilder();
-
-  @override
-  Widget buildTransitions<T>(
-    PageRoute<T> route,
-    BuildContext context,
-    Animation<double> animation,
-    Animation<double> secondaryAnimation,
-    Widget child,
-  ) {
-    return child;
-  }
-}
-
 ThemeData buildBullyTheme(Brightness brightness) {
   final dark = brightness == Brightness.dark;
   final custom = ThemeController.instance.hasCustomBackground;
@@ -107,18 +92,6 @@ ThemeData buildBullyTheme(Brightness brightness) {
     useMaterial3: true,
     brightness: brightness,
     scaffoldBackgroundColor: bgPrimary,
-    // Transparent Scaffolds mid-slide-transition show the outgoing screen
-    // bleeding through at the wrong position — killing the animation when a
-    // custom background is active avoids that double-exposure artifact.
-    pageTransitionsTheme: custom
-        ? const PageTransitionsTheme(builders: {
-            TargetPlatform.android: _InstantPageTransitionsBuilder(),
-            TargetPlatform.iOS: _InstantPageTransitionsBuilder(),
-            TargetPlatform.macOS: _InstantPageTransitionsBuilder(),
-            TargetPlatform.windows: _InstantPageTransitionsBuilder(),
-            TargetPlatform.linux: _InstantPageTransitionsBuilder(),
-          })
-        : const PageTransitionsTheme(),
     colorScheme: ColorScheme.fromSeed(
       seedColor: BullyColors.blurple,
       brightness: brightness,
