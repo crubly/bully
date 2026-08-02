@@ -4,6 +4,8 @@ import '../../core/app_services.dart';
 import '../../core/desktop_window.dart';
 import '../../core/storage/secure_store.dart';
 import '../../theme/bully_theme.dart';
+import '../../theme/mesh_gradient.dart';
+import '../../theme/theme_controller.dart';
 import '../auth/auth_screen.dart';
 import 'appearance_screen.dart';
 import 'data_usage_screen.dart';
@@ -296,32 +298,45 @@ class _ProfileHeaderTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final avatarBytes = AppServices.of(context).avatars.ownAvatarBytes();
-    return Container(
-      decoration: BoxDecoration(
-        color: BullyPalette.of(context).bgSecondary,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        leading: CircleAvatar(
-          radius: 28,
-          backgroundColor: BullyColors.blurple,
-          backgroundImage: avatarBytes != null ? MemoryImage(avatarBytes) : null,
-          child: avatarBytes == null
-              ? Text(
-                  (username?.isNotEmpty ?? false) ? username![0].toUpperCase() : '?',
-                  style: const TextStyle(color: Colors.white, fontSize: 22),
-                )
-              : null,
-        ),
-        title: Text(
-          username ?? '...',
-          style: TextStyle(color: BullyPalette.of(context).textNormal, fontSize: 18, fontWeight: FontWeight.w700),
-        ),
-        subtitle: Text('Профиль и аватарка', style: TextStyle(color: BullyPalette.of(context).textMuted)),
-        trailing: Icon(Icons.chevron_right, color: BullyPalette.of(context).textMuted),
-        onTap: onTap,
+    final gradient = ThemeController.instance.accentGradient;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: Stack(
+        children: [
+          if (gradient != null)
+            Positioned.fill(child: MeshGradientBox(points: gradient, fallbackColor: BullyColors.blurple))
+          else
+            Positioned.fill(child: Container(color: BullyPalette.of(context).bgSecondary)),
+          if (gradient != null) Positioned.fill(child: Container(color: Colors.black.withValues(alpha: 0.35))),
+          ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            leading: CircleAvatar(
+              radius: 28,
+              backgroundColor: BullyColors.blurple,
+              backgroundImage: avatarBytes != null ? MemoryImage(avatarBytes) : null,
+              child: avatarBytes == null
+                  ? Text(
+                      (username?.isNotEmpty ?? false) ? username![0].toUpperCase() : '?',
+                      style: const TextStyle(color: Colors.white, fontSize: 22),
+                    )
+                  : null,
+            ),
+            title: Text(
+              username ?? '...',
+              style: TextStyle(
+                color: gradient != null ? Colors.white : BullyPalette.of(context).textNormal,
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            subtitle: Text(
+              'Профиль и аватарка',
+              style: TextStyle(color: gradient != null ? Colors.white70 : BullyPalette.of(context).textMuted),
+            ),
+            trailing: Icon(Icons.chevron_right, color: gradient != null ? Colors.white70 : BullyPalette.of(context).textMuted),
+            onTap: onTap,
+          ),
+        ],
       ),
     );
   }

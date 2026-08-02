@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import '../../core/app_services.dart';
 import '../../core/storage/secure_store.dart';
 import '../../theme/bully_theme.dart';
+import '../../theme/mesh_gradient.dart';
+import '../../theme/theme_controller.dart';
 
 class ProfileScreen extends StatefulWidget {
   final bool embedded;
@@ -61,25 +63,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _body(BuildContext context) {
     final avatarBytes = AppServices.of(context).avatars.ownAvatarBytes();
+    final gradient = ThemeController.instance.accentGradient;
     return ListView(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.zero,
       children: [
-        Center(
-          child: InkWell(
-            onTap: _pickAvatar,
-            customBorder: const CircleBorder(),
-            child: Tooltip(
-              message: 'Сменить аватарку — видна только тем, с кем вы переписываетесь',
-              child: CircleAvatar(
-                radius: 56,
-                backgroundColor: BullyColors.blurple,
-                backgroundImage: avatarBytes != null ? MemoryImage(avatarBytes) : null,
-                child: avatarBytes == null
-                    ? Text(
-                        (_username?.isNotEmpty ?? false) ? _username![0].toUpperCase() : '?',
-                        style: const TextStyle(color: Colors.white, fontSize: 40),
-                      )
-                    : null,
+        ClipRRect(
+          child: MeshGradientBox(
+            points: gradient,
+            fallbackColor: BullyColors.blurple,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 40, 24, 32),
+              child: Center(
+                child: InkWell(
+                  onTap: _pickAvatar,
+                  customBorder: const CircleBorder(),
+                  child: Tooltip(
+                    message: 'Сменить аватарку — видна только тем, с кем вы переписываетесь',
+                    child: CircleAvatar(
+                      radius: 56,
+                      backgroundColor: Colors.white24,
+                      backgroundImage: avatarBytes != null ? MemoryImage(avatarBytes) : null,
+                      child: avatarBytes == null
+                          ? Text(
+                              (_username?.isNotEmpty ?? false) ? _username![0].toUpperCase() : '?',
+                              style: const TextStyle(color: Colors.white, fontSize: 40),
+                            )
+                          : null,
+                    ),
+                  ),
+                ),
               ),
             ),
           ),

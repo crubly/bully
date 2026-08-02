@@ -3,6 +3,48 @@ import 'package:hive_flutter/hive_flutter.dart';
 
 const defaultAccentColor = Color(0xFF5865F2);
 
+class AccentPoint {
+  final Offset position;
+  final Color color;
+  const AccentPoint(this.position, this.color);
+
+  Map<String, dynamic> toMap() => {'x': position.dx, 'y': position.dy, 'color': color.toARGB32()};
+
+  static AccentPoint fromMap(Map map) => AccentPoint(
+        Offset((map['x'] as num).toDouble(), (map['y'] as num).toDouble()),
+        Color(map['color'] as int),
+      );
+}
+
+class AccentPreset {
+  final String name;
+  final Color? color;
+  final List<AccentPoint>? gradient;
+  const AccentPreset.solid(this.name, this.color) : gradient = null;
+  const AccentPreset.gradient(this.name, this.gradient) : color = null;
+}
+
+const accentPresets = [
+  AccentPreset.solid('Bully', defaultAccentColor),
+  AccentPreset.solid('Розовый', Color(0xFFEB459E)),
+  AccentPreset.solid('Изумруд', Color(0xFF23A559)),
+  AccentPreset.gradient('Закат', [
+    AccentPoint(Offset(0, 0), Color(0xFFF0B232)),
+    AccentPoint(Offset(0.5, 0.5), Color(0xFFEB459E)),
+    AccentPoint(Offset(1, 1), Color(0xFF5865F2)),
+  ]),
+  AccentPreset.gradient('Океан', [
+    AccentPoint(Offset(0, 0), Color(0xFF00A8FC)),
+    AccentPoint(Offset(0.5, 0.5), Color(0xFF2B7DE9)),
+    AccentPoint(Offset(1, 1), Color(0xFF1E1F5C)),
+  ]),
+  AccentPreset.gradient('Лес', [
+    AccentPoint(Offset(0, 0), Color(0xFF9BC53D)),
+    AccentPoint(Offset(0.5, 0.5), Color(0xFF23A559)),
+    AccentPoint(Offset(1, 1), Color(0xFF14532D)),
+  ]),
+];
+
 class ThemeController extends ChangeNotifier {
   static final ThemeController instance = ThemeController._();
   ThemeController._();
@@ -12,10 +54,10 @@ class ThemeController extends ChangeNotifier {
   ThemeMode get mode => _mode;
 
   Color? _accentColor;
-  List<Color>? _accentGradient;
+  List<AccentPoint>? _accentGradient;
 
-  Color get accentColor => _accentGradient?.first ?? _accentColor ?? defaultAccentColor;
-  List<Color>? get accentGradient => _accentGradient;
+  Color get accentColor => _accentGradient?.first.color ?? _accentColor ?? defaultAccentColor;
+  List<AccentPoint>? get accentGradient => _accentGradient;
 
   Future<void> init() async {
     _box = await Hive.openBox('appearance');
@@ -28,9 +70,9 @@ class ThemeController extends ChangeNotifier {
 
     final accentValue = _box.get('accent_color') as int?;
     if (accentValue != null) _accentColor = Color(accentValue);
-    final gradientValues = (_box.get('accent_gradient') as List?)?.cast<int>();
-    if (gradientValues != null && gradientValues.length == 2) {
-      _accentGradient = gradientValues.map(Color.new).toList();
+    final gradientRaw = (_box.get('accent_gradient_points') as List?)?.cast<Map>();
+    if (gradientRaw != null && gradientRaw.length >= 2) {
+      _accentGradient = gradientRaw.map(AccentPoint.fromMap).toList();
     }
   }
 
@@ -49,21 +91,29 @@ class ThemeController extends ChangeNotifier {
     _accentColor = color;
     _accentGradient = null;
     await _box.put('accent_color', color.toARGB32());
-    await _box.delete('accent_gradient');
+    await _box.delete('accent_gradient_points');
     notifyListeners();
   }
 
-  Future<void> setAccentGradient(Color start, Color end) async {
-    _accentGradient = [start, end];
-    await _box.put('accent_gradient', [start.toARGB32(), end.toARGB32()]);
+  Future<void> setAccentGradientPoints(List<AccentPoint> points) async {
+    _accentGradient = points;
+    await _box.put('accent_gradient_points', points.map((p) => p.toMap()).toList());
     notifyListeners();
+  }
+
+  Future<void> applyPreset(AccentPreset preset) async {
+    if (preset.gradient != null) {
+      await setAccentGradientPoints(preset.gradient!);
+    } else {
+      await setAccentColor(preset.color!);
+    }
   }
 
   Future<void> resetAccent() async {
     _accentColor = null;
     _accentGradient = null;
     await _box.delete('accent_color');
-    await _box.delete('accent_gradient');
+    await _box.delete('accent_gradient_points');
     notifyListeners();
   }
 }
