@@ -121,6 +121,20 @@ class AppLock extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Changes the password once already unlocked (caller must have verified
+  /// the current password first, e.g. via [unlock]). Re-derives a fresh
+  /// wrapping key from the new password; callers must re-wrap any blobs
+  /// encrypted under the old key afterward.
+  Future<void> changePassword(String newPassword) async {
+    final saltBytes = Uint8List.fromList(List.generate(16, (_) => Random.secure().nextInt(256)));
+    final salt = base64Encode(saltBytes);
+    final key = await _deriveKey(newPassword, salt);
+    await _box.put('salt', salt);
+    await _box.put('verifier', _verifierOf(key));
+    _lockKey = key;
+    notifyListeners();
+  }
+
   /// Disables the lock after confirming the password — callers are
   /// responsible for re-encrypting any wrapped blobs back to unwrapped
   /// storage before/after calling this.

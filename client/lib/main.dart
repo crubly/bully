@@ -167,9 +167,16 @@ class _BullyAppState extends State<BullyApp> {
                           ),
                         ],
                       ),
-                      ListenableBuilder(
-                        listenable: AppLock.instance,
-                        builder: (context, _) => AppLock.instance.locked ? const Positioned.fill(child: LockScreen()) : const SizedBox.shrink(),
+                      Positioned.fill(
+                        child: ListenableBuilder(
+                          listenable: AppLock.instance,
+                          builder: (context, _) => AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 300),
+                            child: AppLock.instance.locked
+                                ? const LockScreen(key: ValueKey('locked'))
+                                : const SizedBox.shrink(key: ValueKey('unlocked')),
+                          ),
+                        ),
                       ),
                     ],
                   ),

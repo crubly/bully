@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 
 import '../../core/desktop_window.dart';
@@ -50,29 +52,41 @@ class _LockScreenState extends State<LockScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: BullyPalette.of(context).bgPrimary,
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 360),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.lock, size: 48, color: BullyColors.blurple),
-                const SizedBox(height: 16),
-                Text('Bully заблокирован', style: TextStyle(color: BullyPalette.of(context).textNormal, fontSize: 20, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 24),
-                if (_error != null) ...[
-                  Text(_error!, style: const TextStyle(color: BullyColors.danger)),
-                  const SizedBox(height: 12),
-                ],
-                if (DesktopWindow.isDesktop)
-                  _DesktopUnlock(controller: _passwordController, checking: _checking, onSubmit: _submit)
-                else
-                  _PinUnlock(pin: _pin, checking: _checking, onDigit: _onDigit, onBackspace: _onBackspace, onSubmit: () => _submit(_pin)),
-              ],
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return Material(
+      color: Colors.transparent,
+      child: ClipRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
+          child: Container(
+            color: (dark ? Colors.black : Colors.white).withValues(alpha: 0.55),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 360),
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.lock, size: 48, color: BullyColors.blurple),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Bully заблокирован',
+                        style: TextStyle(color: BullyPalette.of(context).textNormal, fontSize: 20, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 24),
+                      if (_error != null) ...[
+                        Text(_error!, style: const TextStyle(color: BullyColors.danger)),
+                        const SizedBox(height: 12),
+                      ],
+                      if (DesktopWindow.isDesktop)
+                        _DesktopUnlock(controller: _passwordController, checking: _checking, onSubmit: _submit)
+                      else
+                        _PinUnlock(pin: _pin, checking: _checking, onDigit: _onDigit, onBackspace: _onBackspace, onSubmit: () => _submit(_pin)),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ),
         ),
