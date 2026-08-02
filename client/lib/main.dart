@@ -10,6 +10,7 @@ import 'core/desktop_window.dart';
 import 'core/media/media_cache.dart';
 import 'core/network/api_client.dart';
 import 'core/network/bandwidth_tracker.dart';
+import 'core/network/connection_banner.dart';
 import 'core/network/node_trust_banner.dart';
 import 'core/node_store.dart';
 import 'core/security/app_lock.dart';
@@ -226,6 +227,13 @@ class _RootRouterState extends State<_RootRouter> {
     if (_loading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
-    return _authenticated ? const AppShell() : const AuthScreen();
+    if (!_authenticated) return const AuthScreen();
+    final services = AppServices.of(context);
+    return Column(
+      children: [
+        ConnectionBanner(ws: services.ws),
+        const Expanded(child: AppShell()),
+      ],
+    );
   }
 }

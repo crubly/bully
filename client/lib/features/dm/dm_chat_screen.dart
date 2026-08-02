@@ -184,28 +184,34 @@ class _DmChatScreenState extends State<DmChatScreen> {
     final text = _input.text.trim();
     if (text.isEmpty || !_ready) return;
     if (_blockIfCompromised()) return;
-    final services = AppServices.of(context);
-    final message = await services.crypto.encrypt(widget.conversationId, text);
-    services.ws.send(RelayEnvelope(
-      type: 'message',
-      conversationId: widget.conversationId,
-      fromUserId: _myUserId ?? '',
-      ciphertext: base64Encode(message.ciphertext),
-      header: base64Encode(message.header),
-    ));
+    try {
+      final services = AppServices.of(context);
+      final message = await services.crypto.encrypt(widget.conversationId, text);
+      services.ws.send(RelayEnvelope(
+        type: 'message',
+        conversationId: widget.conversationId,
+        fromUserId: _myUserId ?? '',
+        ciphertext: base64Encode(message.ciphertext),
+        header: base64Encode(message.header),
+      ));
 
-    await ChatHistoryStore.append(MessageRecord(
-      id: _uuid.v4(),
-      conversationId: widget.conversationId,
-      senderId: _myUserId ?? '',
-      text: text,
-      isMine: true,
-      timestampMs: DateTime.now().millisecondsSinceEpoch,
-    ));
-    setState(() {
-      _messages.add(ChatMessage(_myUserId ?? '', text, true));
-      _input.clear();
-    });
+      await ChatHistoryStore.append(MessageRecord(
+        id: _uuid.v4(),
+        conversationId: widget.conversationId,
+        senderId: _myUserId ?? '',
+        text: text,
+        isMine: true,
+        timestampMs: DateTime.now().millisecondsSinceEpoch,
+      ));
+      setState(() {
+        _messages.add(ChatMessage(_myUserId ?? '', text, true));
+        _input.clear();
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Не удалось отправить: $e'), backgroundColor: BullyColors.danger));
+      }
+    }
   }
 
   @override

@@ -95,16 +95,9 @@ class _SafetyNumberScreenState extends State<SafetyNumberScreen> {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 12),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(_verified ? Icons.verified_user : Icons.gpp_maybe, color: _verified ? BullyColors.online : BullyColors.danger, size: 18),
-                  const SizedBox(width: 6),
-                  Text(
-                    _verified ? 'Подтверждено' : 'Ещё не подтверждено',
-                    style: TextStyle(color: _verified ? BullyColors.online : BullyColors.danger, fontWeight: FontWeight.bold),
-                  ),
-                ],
+              Text(
+                _verified ? 'Подтверждено' : 'Ещё не подтверждено',
+                style: TextStyle(color: _verified ? BullyColors.online : BullyColors.danger, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 20),
               if (_error != null) Text(_error!, style: const TextStyle(color: BullyColors.danger)),
@@ -146,31 +139,22 @@ class _SafetyNumberScreenState extends State<SafetyNumberScreen> {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    OutlinedButton.icon(
+                    OutlinedButton(
                       onPressed: () => _confirmManually(true),
-                      icon: const Icon(Icons.check, size: 18, color: BullyColors.online),
-                      label: const Text('Совпадает'),
+                      child: const Text('Совпадает'),
                     ),
                     const SizedBox(width: 8),
-                    OutlinedButton.icon(
+                    OutlinedButton(
                       onPressed: () => _confirmManually(false),
-                      icon: const Icon(Icons.close, size: 18, color: BullyColors.danger),
-                      label: const Text('Не совпадает'),
+                      child: const Text('Не совпадает'),
                     ),
                   ],
                 ),
                 if (_matchResult != null) ...[
                   const SizedBox(height: 16),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(_matchResult! ? Icons.verified : Icons.gpp_bad, color: _matchResult! ? BullyColors.online : BullyColors.danger),
-                      const SizedBox(width: 8),
-                      Text(
-                        _matchResult! ? 'Коды совпадают — безопасно' : 'Коды НЕ совпадают — возможна подмена ключей!',
-                        style: TextStyle(color: _matchResult! ? BullyColors.online : BullyColors.danger, fontWeight: FontWeight.bold),
-                      ),
-                    ],
+                  Text(
+                    _matchResult! ? 'Коды совпадают — безопасно' : 'Коды НЕ совпадают — возможна подмена ключей!',
+                    style: TextStyle(color: _matchResult! ? BullyColors.online : BullyColors.danger, fontWeight: FontWeight.bold),
                   ),
                 ],
               ],

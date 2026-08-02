@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import 'bandwidth_tracker.dart';
@@ -59,6 +60,13 @@ class WsClient {
   String? _token;
   bool _closed = false;
 
+  /// True once the WebSocket handshake has actually completed — connecting
+  /// doesn't mean connected, and previously nothing distinguished the two,
+  /// so a stuck/rejected handshake looked identical to "everything's fine,
+  /// just no messages yet" from the UI's perspective.
+  final connected = ValueNotifier<bool>(false);
+  final lastError = ValueNotifier<String?>(null);
+
   WsClient(this.baseUrl);
 
   Stream<RelayEnvelope> get messages => _controller.stream;
@@ -73,11 +81,30 @@ class WsClient {
   Future<void> _open() async {
     NodeTrustMonitor.instance.onConnectionOpened();
     final wsBase = baseUrl.replaceFirst('http', 'ws');
-    _channel = WebSocketChannel.connect(Uri.parse('$wsBase/ws?token=$_token'));
-    _channel!.stream.listen(
+    final channel = WebSocketChannel.connect(Uri.parse('$wsBase/ws?token=$_token'));
+    _channel = channel;
+    try {
+      await channel.ready;
+    } catch (e) {
+      connected.value = false;
+      lastError.value = '$e';
+      _scheduleReconnect();
+      return;
+    }
+    if (_closed) return;
+    connected.value = true;
+    lastError.value = null;
+    channel.stream.listen(
       _handleFrame,
-      onDone: _scheduleReconnect,
-      onError: (_) => _scheduleReconnect(),
+      onDone: () {
+        connected.value = false;
+        _scheduleReconnect();
+      },
+      onError: (e) {
+        connected.value = false;
+        lastError.value = '$e';
+        _scheduleReconnect();
+      },
       cancelOnError: true,
     );
     _pump?.cancel();
@@ -144,5 +171,7 @@ class WsClient {
     _pump?.cancel();
     _channel?.sink.close();
     _controller.close();
+    connected.dispose();
+    lastError.dispose();
   }
 }

@@ -190,27 +190,33 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
       ));
       return;
     }
-    final services = AppServices.of(context);
-    final group = await services.groupCrypto.encrypt(widget.groupId, text);
-    services.ws.send(RelayEnvelope(
-      type: 'message',
-      conversationId: widget.conversationId,
-      fromUserId: _myUserId ?? '',
-      ciphertext: base64Encode(group.ciphertext),
-      header: base64Encode(utf8.encode(jsonEncode({'n': group.iteration}))),
-    ));
-    await ChatHistoryStore.append(MessageRecord(
-      id: _uuid.v4(),
-      conversationId: widget.conversationId,
-      senderId: _myUserId ?? '',
-      text: text,
-      isMine: true,
-      timestampMs: DateTime.now().millisecondsSinceEpoch,
-    ));
-    setState(() {
-      _messages.add(ChatMessage(_myUserId ?? '', text, true));
-      _input.clear();
-    });
+    try {
+      final services = AppServices.of(context);
+      final group = await services.groupCrypto.encrypt(widget.groupId, text);
+      services.ws.send(RelayEnvelope(
+        type: 'message',
+        conversationId: widget.conversationId,
+        fromUserId: _myUserId ?? '',
+        ciphertext: base64Encode(group.ciphertext),
+        header: base64Encode(utf8.encode(jsonEncode({'n': group.iteration}))),
+      ));
+      await ChatHistoryStore.append(MessageRecord(
+        id: _uuid.v4(),
+        conversationId: widget.conversationId,
+        senderId: _myUserId ?? '',
+        text: text,
+        isMine: true,
+        timestampMs: DateTime.now().millisecondsSinceEpoch,
+      ));
+      setState(() {
+        _messages.add(ChatMessage(_myUserId ?? '', text, true));
+        _input.clear();
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Не удалось отправить: $e'), backgroundColor: BullyColors.danger));
+      }
+    }
   }
 
   @override
