@@ -50,15 +50,18 @@ _TintedBackgrounds _backgroundsFor(Brightness brightness) {
         : const _TintedBackgrounds(BullyColors.bgPrimaryLight, BullyColors.bgSecondaryLight, BullyColors.bgTertiaryLight);
   }
   final hsv = HSVColor.fromColor(blend);
+  // bgPrimary goes fully transparent so the real ThemeBackdrop mesh gradient
+  // shows through the main canvas — chrome (cards/tiles/inputs) stays a
+  // solid tinted color derived from the blend so text stays legible.
   if (dark) {
     return _TintedBackgrounds(
-      _tinted(hsv.hue, hsv.saturation, 0.24),
+      Colors.transparent,
       _tinted(hsv.hue, hsv.saturation, 0.20),
       _tinted(hsv.hue, hsv.saturation, 0.14),
     );
   }
   return _TintedBackgrounds(
-    _tinted(hsv.hue, hsv.saturation * 0.55, 1.0),
+    Colors.transparent,
     _tinted(hsv.hue, hsv.saturation * 0.6, 0.955),
     _tinted(hsv.hue, hsv.saturation * 0.65, 0.895),
   );
@@ -110,7 +113,7 @@ ThemeData buildBullyTheme(Brightness brightness) {
     colorScheme: ColorScheme.fromSeed(
       seedColor: BullyColors.blurple,
       brightness: brightness,
-      surface: bgPrimary,
+      surface: bgSecondary,
       primary: BullyColors.blurple,
     ),
     fontFamily: 'Roboto',

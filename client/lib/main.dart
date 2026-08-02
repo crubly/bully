@@ -15,6 +15,7 @@ import 'features/auth/auth_screen.dart';
 import 'features/nodes/node_picker_screen.dart';
 import 'features/shell/app_shell.dart';
 import 'theme/bully_theme.dart';
+import 'theme/theme_backdrop.dart';
 import 'theme/theme_controller.dart';
 
 void main() async {
@@ -92,10 +93,15 @@ class _BullyAppState extends State<BullyApp> {
         darkTheme: buildBullyTheme(Brightness.dark),
         builder: node == null
             ? null
-            : (context, child) => AppServices(
-                  key: ValueKey(node.url),
-                  nodeUrl: node.url,
-                  child: child!,
+            : (context, child) => Stack(
+                  children: [
+                    const Positioned.fill(child: ThemeBackdrop()),
+                    AppServices(
+                      key: ValueKey(node.url),
+                      nodeUrl: node.url,
+                      child: child!,
+                    ),
+                  ],
                 ),
         home: _checkingSavedNode
             ? const Scaffold(body: Center(child: CircularProgressIndicator()))
