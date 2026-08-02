@@ -51,11 +51,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void initState() {
     super.initState();
     _loadUsername();
-    if (!widget.embedded) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) DesktopWindow.setTitle('Bully — ${_sections(context)[_selected].title}');
-      });
-    }
   }
 
   Future<void> _loadUsername() async {
@@ -68,17 +63,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  @override
-  void dispose() {
-    if (!widget.embedded) DesktopWindow.setTitle('Bully');
-    super.dispose();
-  }
-
   void _selectSection(int i) {
     setState(() => _selected = i);
-    if (!widget.embedded) {
-      DesktopWindow.setTitle('Bully — ${_sections(context)[i].title}');
-    }
   }
 
   Future<void> _logout(BuildContext context) async {

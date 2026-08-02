@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:typed_data';
+import 'dart:ui';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -8,6 +9,7 @@ import '../../core/app_services.dart';
 import '../../core/calls/call_controller.dart';
 import '../../core/storage/secure_store.dart';
 import '../../theme/bully_theme.dart';
+import '../../theme/theme_controller.dart';
 import '../calls/call_screen.dart';
 import '../dm/dm_chat_screen.dart';
 import '../dm/new_dm_dialog.dart';
@@ -218,6 +220,35 @@ class _AppShellState extends State<AppShell> {
     );
   }
 
+  Widget _mobileNavBar(BuildContext context) {
+    final destinations = const [
+      NavigationDestination(icon: Icon(Icons.chat_bubble_outline), selectedIcon: Icon(Icons.chat_bubble), label: 'Чаты'),
+      NavigationDestination(icon: Icon(Icons.settings_outlined), selectedIcon: Icon(Icons.settings), label: 'Настройки'),
+    ];
+    if (!ThemeController.instance.hasCustomBackground) {
+      return NavigationBar(
+        selectedIndex: _mobileTab,
+        onDestinationSelected: (i) => setState(() => _mobileTab = i),
+        destinations: destinations,
+      );
+    }
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+        child: Container(
+          color: (dark ? Colors.black : Colors.white).withValues(alpha: dark ? 0.35 : 0.3),
+          child: NavigationBar(
+            backgroundColor: Colors.transparent,
+            selectedIndex: _mobileTab,
+            onDestinationSelected: (i) => setState(() => _mobileTab = i),
+            destinations: destinations,
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildMobile(BuildContext context) {
     final combined = [..._entries]..sort((a, b) => a.label.compareTo(b.label));
     return Scaffold(
@@ -294,14 +325,7 @@ class _AppShellState extends State<AppShell> {
           const SettingsScreen(embedded: true),
         ],
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _mobileTab,
-        onDestinationSelected: (i) => setState(() => _mobileTab = i),
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.chat_bubble_outline), selectedIcon: Icon(Icons.chat_bubble), label: 'Чаты'),
-          NavigationDestination(icon: Icon(Icons.settings_outlined), selectedIcon: Icon(Icons.settings), label: 'Настройки'),
-        ],
-      ),
+      bottomNavigationBar: _mobileNavBar(context),
     );
   }
 

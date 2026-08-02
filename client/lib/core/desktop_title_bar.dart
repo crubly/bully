@@ -12,7 +12,6 @@ class DesktopTitleBar extends StatelessWidget {
   Widget build(BuildContext context) {
     if (!DesktopWindow.isDesktop) return const SizedBox.shrink();
     final showControls = Platform.isWindows || Platform.isLinux;
-    final macos = Platform.isMacOS;
 
     final palette = BullyPalette.of(context);
     return GestureDetector(
@@ -24,20 +23,7 @@ class DesktopTitleBar extends StatelessWidget {
         color: palette.bgPrimary,
         child: Row(
           children: [
-            if (macos) const SizedBox(width: 70),
-            Expanded(
-              child: Padding(
-                padding: EdgeInsets.only(left: macos ? 0 : 12),
-                child: ValueListenableBuilder<String>(
-                  valueListenable: DesktopWindow.title,
-                  builder: (context, title, _) => Text(
-                    title,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: palette.textNormal),
-                  ),
-                ),
-              ),
-            ),
+            const Expanded(child: SizedBox.shrink()),
             if (showControls) ...[
               _TitleBarButton(icon: Icons.remove, color: palette.textMuted, onTap: DesktopWindow.minimize),
               _TitleBarButton(icon: Icons.crop_square, color: palette.textMuted, onTap: DesktopWindow.toggleMaximize),
