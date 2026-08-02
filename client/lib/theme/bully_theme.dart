@@ -19,6 +19,23 @@ class BullyColors {
   static const textMutedLight = Color(0xFF5C5E66);
 }
 
+Color _tinted(double hue, double saturation, double value) => HSVColor.fromAHSV(1, hue, saturation, value).toColor();
+
+class _TintedBackgrounds {
+  final Color bgPrimary;
+  final Color bgSecondary;
+  final Color bgTertiary;
+  const _TintedBackgrounds(this.bgPrimary, this.bgSecondary, this.bgTertiary);
+}
+
+_TintedBackgrounds _backgroundsFor(Brightness brightness) {
+  final hue = HSVColor.fromColor(ThemeController.instance.accentColor).hue;
+  if (brightness == Brightness.dark) {
+    return _TintedBackgrounds(_tinted(hue, 0.14, 0.215), _tinted(hue, 0.16, 0.19), _tinted(hue, 0.18, 0.13));
+  }
+  return _TintedBackgrounds(_tinted(hue, 0.03, 1.0), _tinted(hue, 0.05, 0.955), _tinted(hue, 0.07, 0.895));
+}
+
 class BullyPalette {
   final Color bgPrimary;
   final Color bgSecondary;
@@ -34,32 +51,27 @@ class BullyPalette {
     required this.textMuted,
   });
 
-  static const dark = BullyPalette._(
-    bgPrimary: BullyColors.bgPrimary,
-    bgSecondary: BullyColors.bgSecondary,
-    bgTertiary: BullyColors.bgTertiary,
-    textNormal: BullyColors.textNormal,
-    textMuted: BullyColors.textMuted,
-  );
-
-  static const light = BullyPalette._(
-    bgPrimary: BullyColors.bgPrimaryLight,
-    bgSecondary: BullyColors.bgSecondaryLight,
-    bgTertiary: BullyColors.bgTertiaryLight,
-    textNormal: BullyColors.textNormalLight,
-    textMuted: BullyColors.textMutedLight,
-  );
-
-  static BullyPalette of(BuildContext context) => Theme.of(context).brightness == Brightness.dark ? dark : light;
+  static BullyPalette of(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final bg = _backgroundsFor(dark ? Brightness.dark : Brightness.light);
+    return BullyPalette._(
+      bgPrimary: bg.bgPrimary,
+      bgSecondary: bg.bgSecondary,
+      bgTertiary: bg.bgTertiary,
+      textNormal: dark ? BullyColors.textNormal : BullyColors.textNormalLight,
+      textMuted: dark ? BullyColors.textMuted : BullyColors.textMutedLight,
+    );
+  }
 }
 
 const _radius = 12.0;
 
 ThemeData buildBullyTheme(Brightness brightness) {
   final dark = brightness == Brightness.dark;
-  final bgPrimary = dark ? BullyColors.bgPrimary : BullyColors.bgPrimaryLight;
-  final bgSecondary = dark ? BullyColors.bgSecondary : BullyColors.bgSecondaryLight;
-  final bgTertiary = dark ? BullyColors.bgTertiary : BullyColors.bgTertiaryLight;
+  final bg = _backgroundsFor(brightness);
+  final bgPrimary = bg.bgPrimary;
+  final bgSecondary = bg.bgSecondary;
+  final bgTertiary = bg.bgTertiary;
   final textNormal = dark ? BullyColors.textNormal : BullyColors.textNormalLight;
   final textMuted = dark ? BullyColors.textMuted : BullyColors.textMutedLight;
 

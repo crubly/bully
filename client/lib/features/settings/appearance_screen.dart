@@ -7,7 +7,7 @@ import '../../theme/theme_controller.dart';
 import 'app_icon_screen.dart';
 import 'gradient_editor.dart';
 
-enum _ThemeTab { color, gradient, presets }
+enum _ThemeTab { gradient, presets }
 
 class AppearanceScreen extends StatefulWidget {
   final bool embedded;
@@ -18,7 +18,7 @@ class AppearanceScreen extends StatefulWidget {
 }
 
 class _AppearanceScreenState extends State<AppearanceScreen> {
-  late _ThemeTab _tab = ThemeController.instance.accentGradient != null ? _ThemeTab.gradient : _ThemeTab.color;
+  _ThemeTab _tab = _ThemeTab.gradient;
 
   Widget _body(BuildContext context) {
     return ListenableBuilder(
@@ -50,6 +50,39 @@ class _AppearanceScreenState extends State<AppearanceScreen> {
             const SizedBox(height: 16),
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
+              child: Text('Акцентный цвет', style: TextStyle(color: BullyPalette.of(context).textMuted, fontSize: 12)),
+            ),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: BullyPalette.of(context).bgSecondary, borderRadius: BorderRadius.circular(16)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: HsvColorWheel(
+                      initial: accentColor,
+                      onChanged: (c) => ThemeController.instance.setAccentColor(c),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: accentPresets
+                        .where((p) => p.color != null)
+                        .map((p) => _ColorSwatch(
+                              color: p.color!,
+                              selected: accentGradient == null && accentColor.toARGB32() == p.color!.toARGB32(),
+                              onTap: () => ThemeController.instance.setAccentColor(p.color!),
+                            ))
+                        .toList(),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
               child: Text('Тема', style: TextStyle(color: BullyPalette.of(context).textMuted, fontSize: 12)),
             ),
             Container(
@@ -71,7 +104,6 @@ class _AppearanceScreenState extends State<AppearanceScreen> {
                   const SizedBox(height: 12),
                   SegmentedButton<_ThemeTab>(
                     segments: const [
-                      ButtonSegment(value: _ThemeTab.color, label: Text('Цвет'), icon: Icon(Icons.color_lens, size: 16)),
                       ButtonSegment(value: _ThemeTab.gradient, label: Text('Градиент'), icon: Icon(Icons.gradient, size: 16)),
                       ButtonSegment(value: _ThemeTab.presets, label: Text('Готовые'), icon: Icon(Icons.style, size: 16)),
                     ],
@@ -79,13 +111,6 @@ class _AppearanceScreenState extends State<AppearanceScreen> {
                     onSelectionChanged: (s) => setState(() => _tab = s.first),
                   ),
                   const SizedBox(height: 16),
-                  if (_tab == _ThemeTab.color)
-                    Center(
-                      child: HsvColorWheel(
-                        initial: accentColor,
-                        onChanged: (c) => ThemeController.instance.setAccentColor(c),
-                      ),
-                    ),
                   if (_tab == _ThemeTab.gradient)
                     Center(
                       child: GradientEditor(
@@ -163,6 +188,33 @@ class _ThemeOption extends StatelessWidget {
         title: Text(label, style: TextStyle(color: BullyPalette.of(context).textNormal)),
         trailing: selected ? Icon(Icons.check_circle, color: BullyColors.blurple) : null,
         onTap: onTap,
+      ),
+    );
+  }
+}
+
+class _ColorSwatch extends StatelessWidget {
+  final Color color;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _ColorSwatch({required this.color, required this.selected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      customBorder: const CircleBorder(),
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: color,
+          shape: BoxShape.circle,
+          border: selected ? Border.all(color: Colors.white, width: 2.5) : null,
+          boxShadow: selected ? [BoxShadow(color: color.withValues(alpha: 0.6), blurRadius: 6)] : null,
+        ),
+        child: selected ? const Icon(Icons.check, color: Colors.white, size: 18) : null,
       ),
     );
   }

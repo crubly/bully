@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -61,41 +62,47 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  Widget _avatar(BuildContext context, Uint8List? avatarBytes, Color avatarBgColor) {
+    return InkWell(
+      onTap: _pickAvatar,
+      customBorder: const CircleBorder(),
+      child: Tooltip(
+        message: 'Сменить аватарку — видна только тем, с кем вы переписываетесь',
+        child: CircleAvatar(
+          radius: 56,
+          backgroundColor: avatarBgColor,
+          backgroundImage: avatarBytes != null ? MemoryImage(avatarBytes) : null,
+          child: avatarBytes == null
+              ? Text(
+                  (_username?.isNotEmpty ?? false) ? _username![0].toUpperCase() : '?',
+                  style: const TextStyle(color: Colors.white, fontSize: 40),
+                )
+              : null,
+        ),
+      ),
+    );
+  }
+
   Widget _body(BuildContext context) {
     final avatarBytes = AppServices.of(context).avatars.ownAvatarBytes();
     final gradient = ThemeController.instance.accentGradient;
     return ListView(
-      padding: EdgeInsets.zero,
+      padding: const EdgeInsets.all(24),
       children: [
-        ClipRRect(
-          child: MeshGradientBox(
-            points: gradient,
-            fallbackColor: BullyColors.blurple,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 40, 24, 32),
-              child: Center(
-                child: InkWell(
-                  onTap: _pickAvatar,
-                  customBorder: const CircleBorder(),
-                  child: Tooltip(
-                    message: 'Сменить аватарку — видна только тем, с кем вы переписываетесь',
-                    child: CircleAvatar(
-                      radius: 56,
-                      backgroundColor: Colors.white24,
-                      backgroundImage: avatarBytes != null ? MemoryImage(avatarBytes) : null,
-                      child: avatarBytes == null
-                          ? Text(
-                              (_username?.isNotEmpty ?? false) ? _username![0].toUpperCase() : '?',
-                              style: const TextStyle(color: Colors.white, fontSize: 40),
-                            )
-                          : null,
-                    ),
-                  ),
-                ),
+        if (gradient != null)
+          ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: MeshGradientBox(
+              points: gradient,
+              fallbackColor: BullyColors.blurple,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 32),
+                child: Center(child: _avatar(context, avatarBytes, Colors.white24)),
               ),
             ),
-          ),
-        ),
+          )
+        else
+          Center(child: _avatar(context, avatarBytes, BullyColors.blurple)),
         const SizedBox(height: 16),
         Center(
           child: Text(
