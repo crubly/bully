@@ -92,7 +92,7 @@ class CryptoSessionManager {
   Future<void> trustNewPeerIdentity(String peerUserId, Uint8List peerPublicKey) =>
       PeerIdentityStore.trust(peerUserId, peerPublicKey);
 
-  Future<void> startAsSender({
+  Future<void> establishSession({
     required String conversationId,
     required String peerUserId,
     required String passphrase,
@@ -104,23 +104,10 @@ class CryptoSessionManager {
 
     await PeerIdentityStore.checkOrPin(peerUserId, Uint8List.fromList(peerPublicKey));
 
-    final session = await RatchetSession.initAsSender(
+    final session = await RatchetSession.init(
       bootstrapSecret: bootstrapSecret,
-      peerPublicKey: Uint8List.fromList(peerPublicKey),
-    );
-    _sessions[conversationId] = session;
-    await _persistSession(conversationId, session);
-  }
-
-  Future<void> prepareAsReceiver({
-    required String conversationId,
-    required String passphrase,
-  }) async {
-    await ensureIdentity();
-    final bootstrapSecret = await PassphraseKdf.deriveBootstrapSecret(passphrase, conversationId);
-    final session = await RatchetSession.initAsReceiver(
-      bootstrapSecret: bootstrapSecret,
-      myKeyPair: _identity!,
+      myIdentityKeyPair: _identity!,
+      peerIdentityPublicKey: Uint8List.fromList(peerPublicKey),
     );
     _sessions[conversationId] = session;
     await _persistSession(conversationId, session);

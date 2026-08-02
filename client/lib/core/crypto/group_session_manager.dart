@@ -39,16 +39,15 @@ class GroupSessionManager {
 
     final bootstrapSecret = await PassphraseKdf.deriveBootstrapSecret(passphrase, kxId);
 
-    final iAmFirst = ([myUserId, otherUserId]..sort()).first == myUserId;
-    final RatchetSession session;
-    if (iAmFirst) {
-      final bundle = await api.fetchKeyBundle(otherUserId);
-      final peerPublicKey = base64Decode(bundle['signed_public_key'] as String);
-      await PeerIdentityStore.checkOrPin(otherUserId, Uint8List.fromList(peerPublicKey));
-      session = await RatchetSession.initAsSender(bootstrapSecret: bootstrapSecret, peerPublicKey: Uint8List.fromList(peerPublicKey));
-    } else {
-      session = await RatchetSession.initAsReceiver(bootstrapSecret: bootstrapSecret, myKeyPair: identityKeyPair());
-    }
+    final bundle = await api.fetchKeyBundle(otherUserId);
+    final peerPublicKey = Uint8List.fromList(base64Decode(bundle['signed_public_key'] as String));
+    await PeerIdentityStore.checkOrPin(otherUserId, peerPublicKey);
+
+    final session = await RatchetSession.init(
+      bootstrapSecret: bootstrapSecret,
+      myIdentityKeyPair: identityKeyPair(),
+      peerIdentityPublicKey: peerPublicKey,
+    );
     _kxSessions[kxId] = session;
     await SecureStore.setBlob('ratchet:$kxId', jsonEncode(await session.toJson()));
     return session;

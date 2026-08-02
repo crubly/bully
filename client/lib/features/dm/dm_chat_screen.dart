@@ -83,52 +83,45 @@ class _DmChatScreenState extends State<DmChatScreen> {
           return;
         }
 
-        final iAmInitiator = (_myUserId ?? '').compareTo(widget.peerUserId) < 0;
-        if (iAmInitiator) {
-          try {
-            await services.crypto.startAsSender(
+        Future<void> setup() => services.crypto.establishSession(
               conversationId: widget.conversationId,
               peerUserId: widget.peerUserId,
               passphrase: passphrase,
             );
-          } on PeerIdentityChangedException {
-            if (!mounted) return;
-            final trust = await showDialog<bool>(
-              context: context,
-              barrierDismissible: false,
-              builder: (context) => AlertDialog(
-                backgroundColor: BullyPalette.of(context).bgSecondary,
-                title: const Text('Ключ собеседника изменился', style: TextStyle(color: BullyColors.danger)),
-                content: Text(
-                  'Ключ шифрования @${widget.peerUsername} не совпадает с тем, что был при первом контакте. '
-                  'Это нормально, если собеседник переустановил приложение — но так же выглядит подмена ключа '
-                  'атакующим. Сверьте код безопасности лично перед тем, как доверять новому ключу.',
-                  style: TextStyle(color: BullyPalette.of(context).textNormal),
-                ),
-                actions: [
-                  TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Отмена')),
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(true),
-                    child: const Text('Доверять новому ключу', style: TextStyle(color: BullyColors.danger)),
-                  ),
-                ],
+
+        try {
+          await setup();
+        } on PeerIdentityChangedException {
+          if (!mounted) return;
+          final trust = await showDialog<bool>(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => AlertDialog(
+              backgroundColor: BullyPalette.of(context).bgSecondary,
+              title: const Text('Ключ собеседника изменился', style: TextStyle(color: BullyColors.danger)),
+              content: Text(
+                'Ключ шифрования @${widget.peerUsername} не совпадает с тем, что был при первом контакте. '
+                'Это нормально, если собеседник переустановил приложение — но так же выглядит подмена ключа '
+                'атакующим. Сверьте код безопасности лично перед тем, как доверять новому ключу.',
+                style: TextStyle(color: BullyPalette.of(context).textNormal),
               ),
-            );
-            if (trust != true) {
-              if (mounted) Navigator.of(context).pop();
-              return;
-            }
-            final bundle = await services.api.fetchKeyBundle(widget.peerUserId);
-            final peerPublicKey = base64Decode(bundle['signed_public_key'] as String);
-            await services.crypto.trustNewPeerIdentity(widget.peerUserId, peerPublicKey);
-            await services.crypto.startAsSender(
-              conversationId: widget.conversationId,
-              peerUserId: widget.peerUserId,
-              passphrase: passphrase,
-            );
+              actions: [
+                TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Отмена')),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  child: const Text('Доверять новому ключу', style: TextStyle(color: BullyColors.danger)),
+                ),
+              ],
+            ),
+          );
+          if (trust != true) {
+            if (mounted) Navigator.of(context).pop();
+            return;
           }
-        } else {
-          await services.crypto.prepareAsReceiver(conversationId: widget.conversationId, passphrase: passphrase);
+          final bundle = await services.api.fetchKeyBundle(widget.peerUserId);
+          final peerPublicKey = base64Decode(bundle['signed_public_key'] as String);
+          await services.crypto.trustNewPeerIdentity(widget.peerUserId, peerPublicKey);
+          await setup();
         }
       }
       unawaited(services.avatars.shareWithPeer(conversationId: widget.conversationId, peerUserId: widget.peerUserId));

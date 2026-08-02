@@ -119,22 +119,49 @@ class CryptoSelfTest {
 
   static Future<void> _doubleRatchetRoundTrip() async {
     final bootstrapSecret = Uint8List.fromList(List.filled(32, 9));
-    final receiverKeyPair = await X25519KeyPair.generate();
+    final aliceKeyPair = await X25519KeyPair.generate();
+    final bobKeyPair = await X25519KeyPair.generate();
 
-    final sender = await RatchetSession.initAsSender(
+    final alice = await RatchetSession.init(
       bootstrapSecret: bootstrapSecret,
-      peerPublicKey: receiverKeyPair.publicKeyBytes,
+      myIdentityKeyPair: aliceKeyPair,
+      peerIdentityPublicKey: bobKeyPair.publicKeyBytes,
     );
-    final receiver = await RatchetSession.initAsReceiver(
+    final bob = await RatchetSession.init(
       bootstrapSecret: bootstrapSecret,
-      myKeyPair: receiverKeyPair,
+      myIdentityKeyPair: bobKeyPair,
+      peerIdentityPublicKey: aliceKeyPair.publicKeyBytes,
     );
 
-    final plaintext = Uint8List.fromList(utf8.encode('bully-double-ratchet-selftest'));
-    final message = await sender.encrypt(plaintext);
-    final decrypted = await receiver.decrypt(message.header, message.ciphertext);
-    if (!_bytesEqual(decrypted, plaintext)) {
-      throw CryptoSelfTestFailure('Double Ratchet round-trip did not recover plaintext');
+    final plaintextA = Uint8List.fromList(utf8.encode('bully-double-ratchet-selftest-a-to-b'));
+    final messageA = await alice.encrypt(plaintextA);
+    final decryptedA = await bob.decrypt(messageA.header, messageA.ciphertext);
+    if (!_bytesEqual(decryptedA, plaintextA)) {
+      throw CryptoSelfTestFailure('Double Ratchet round-trip (A to B) did not recover plaintext');
+    }
+
+    final plaintextB = Uint8List.fromList(utf8.encode('bully-double-ratchet-selftest-b-to-a'));
+    final messageB = await bob.encrypt(plaintextB);
+    final decryptedB = await alice.decrypt(messageB.header, messageB.ciphertext);
+    if (!_bytesEqual(decryptedB, plaintextB)) {
+      throw CryptoSelfTestFailure('Double Ratchet round-trip (B to A) did not recover plaintext');
+    }
+
+    final freshAlice = await RatchetSession.init(
+      bootstrapSecret: bootstrapSecret,
+      myIdentityKeyPair: aliceKeyPair,
+      peerIdentityPublicKey: bobKeyPair.publicKeyBytes,
+    );
+    final freshBob = await RatchetSession.init(
+      bootstrapSecret: bootstrapSecret,
+      myIdentityKeyPair: bobKeyPair,
+      peerIdentityPublicKey: aliceKeyPair.publicKeyBytes,
+    );
+    final plaintextFirst = Uint8List.fromList(utf8.encode('bully-double-ratchet-selftest-second-party-sends-first'));
+    final messageFirst = await freshBob.encrypt(plaintextFirst);
+    final decryptedFirst = await freshAlice.decrypt(messageFirst.header, messageFirst.ciphertext);
+    if (!_bytesEqual(decryptedFirst, plaintextFirst)) {
+      throw CryptoSelfTestFailure('Double Ratchet: peer could not send the very first message without receiving anything first');
     }
   }
 

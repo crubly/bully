@@ -42,31 +42,64 @@ class RatchetSession {
   int _nr = 0;
   int _pn = 0;
 
+  // True only right after the symmetric init(), while _dhSelf is still the
+  // long-term identity keypair rather than a fresh ephemeral. Cleared the
+  // first time we receive something in that state, which triggers rotating
+  // our OWN sending side to a fresh ephemeral — kicking off the normal
+  // Double Ratchet forward-secrecy cascade from that point on, the same way
+  // it always worked once a conversation had messages flowing both ways.
+  bool _dhSelfIsIdentity = false;
+
   final Map<String, ({Uint8List messageKeyA, Uint8List messageKeyB})> _skippedKeys = {};
 
   static const _maxSkip = 1000;
 
   RatchetSession._(this._rootKey, this._dhSelf);
 
-  static Future<RatchetSession> initAsSender({
+  /// Symmetric bootstrap: both sides call this identically, each with their
+  /// own identity keypair and the other's identity public key. Both compute
+  /// the SAME Diffie-Hellman value (that's what ECDH guarantees), then
+  /// derive two INDEPENDENT chain keys from it — one per direction, picked
+  /// by comparing the two public keys — so each side's message stream never
+  /// overlaps the other's even though the underlying DH secret is shared.
+  /// Unlike the old sender/receiver split, this means either side can send
+  /// the very first message — nobody has to wait to be messaged first.
+  static Future<RatchetSession> init({
     required Uint8List bootstrapSecret,
-    required Uint8List peerPublicKey,
+    required X25519KeyPair myIdentityKeyPair,
+    required Uint8List peerIdentityPublicKey,
   }) async {
-    final dhSelf = await X25519KeyPair.generate();
-    final dhOut = await X25519KeyPair.sharedSecret(privateKey: dhSelf.keyPair, peerPublicKeyBytes: peerPublicKey);
-    final session = RatchetSession._(bootstrapSecret, dhSelf);
-    final derived = await session._kdfRootKey(session._rootKey, dhOut);
-    session._rootKey = derived.rootKey;
-    session._sendingChainKey = derived.chainKey;
-    session._dhRemote = peerPublicKey;
+    final session = RatchetSession._(bootstrapSecret, myIdentityKeyPair);
+    final dhOut = await X25519KeyPair.sharedSecret(
+      privateKey: myIdentityKeyPair.keyPair,
+      peerPublicKeyBytes: peerIdentityPublicKey,
+    );
+    final hkdf = Hkdf(hmac: Hmac.sha256(), outputLength: 96);
+    final derived = await hkdf.deriveKey(
+      secretKey: SecretKey(dhOut),
+      nonce: bootstrapSecret,
+      info: utf8.encode('bully-double-ratchet-root'),
+    );
+    final bytes = await derived.extractBytes();
+    final rootKey = Uint8List.fromList(bytes.sublist(0, 32));
+    final chainA = Uint8List.fromList(bytes.sublist(32, 64));
+    final chainB = Uint8List.fromList(bytes.sublist(64, 96));
+
+    final amFirst = _compareBytes(myIdentityKeyPair.publicKeyBytes, peerIdentityPublicKey) < 0;
+    session._rootKey = rootKey;
+    session._sendingChainKey = amFirst ? chainA : chainB;
+    session._receivingChainKey = amFirst ? chainB : chainA;
+    session._dhRemote = peerIdentityPublicKey;
+    session._dhSelfIsIdentity = true;
     return session;
   }
 
-  static Future<RatchetSession> initAsReceiver({
-    required Uint8List bootstrapSecret,
-    required X25519KeyPair myKeyPair,
-  }) async {
-    return RatchetSession._(bootstrapSecret, myKeyPair);
+  static int _compareBytes(Uint8List a, Uint8List b) {
+    final len = a.length < b.length ? a.length : b.length;
+    for (var i = 0; i < len; i++) {
+      if (a[i] != b[i]) return a[i] - b[i];
+    }
+    return a.length - b.length;
   }
 
   // Messages are encrypted in a cascade: AES-256-GCM first, then the whole
@@ -75,7 +108,7 @@ class RatchetSession {
   // ciphers, not just one.
   Future<RatchetMessage> encrypt(Uint8List plaintext) async {
     if (_sendingChainKey == null) {
-      throw StateError('sending chain not initialized — call initAsSender or receive a message first');
+      throw StateError('sending chain not initialized — call init() first');
     }
     final stepped = await _kdfChainKey(_sendingChainKey!);
     _sendingChainKey = stepped.chainKey;
@@ -98,6 +131,8 @@ class RatchetSession {
 
       await _skipMessageKeys(header.previousChainLength);
       await _dhRatchetStep(header.dhPublicKey);
+    } else if (_dhSelfIsIdentity) {
+      await _rotateOwnSendingChain();
     }
 
     final cached = _skippedKeys.remove('${base64Encode(header.dhPublicKey)}:${header.messageNumber}');
@@ -132,7 +167,19 @@ class RatchetSession {
     }
   }
 
+  Future<void> _rotateOwnSendingChain() async {
+    _dhSelfIsIdentity = false;
+    _dhSelf = await X25519KeyPair.generate();
+    final dhOut = await X25519KeyPair.sharedSecret(privateKey: _dhSelf.keyPair, peerPublicKeyBytes: _dhRemote!);
+    final derived = await _kdfRootKey(_rootKey, dhOut);
+    _rootKey = derived.rootKey;
+    _sendingChainKey = derived.chainKey;
+    _pn = _ns;
+    _ns = 0;
+  }
+
   Future<void> _dhRatchetStep(Uint8List newRemotePublicKey) async {
+    _dhSelfIsIdentity = false;
     _pn = _ns;
     _ns = 0;
     _nr = 0;
@@ -193,6 +240,7 @@ class RatchetSession {
       'ns': _ns,
       'nr': _nr,
       'pn': _pn,
+      'dhSelfIsIdentity': _dhSelfIsIdentity,
       'skipped': _skippedKeys.map((k, v) => MapEntry(k, {'a': base64Encode(v.messageKeyA), 'b': base64Encode(v.messageKeyB)})),
     };
   }
@@ -210,6 +258,7 @@ class RatchetSession {
     session._ns = json['ns'] as int;
     session._nr = json['nr'] as int;
     session._pn = json['pn'] as int;
+    session._dhSelfIsIdentity = json['dhSelfIsIdentity'] as bool? ?? false;
     final skipped = (json['skipped'] as Map<String, dynamic>?) ?? {};
     skipped.forEach((k, v) {
       final map = v as Map;
