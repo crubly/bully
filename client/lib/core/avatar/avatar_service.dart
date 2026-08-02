@@ -55,7 +55,7 @@ class AvatarService {
   Future<void> shareWithPeer({required String conversationId, required String peerUserId}) async {
     final own = AvatarStore.ownAvatarBase64;
     if (own == null) return;
-    if (!crypto.hasSession(conversationId)) return;
+    if (!(await crypto.hasSession(conversationId))) return;
 
     final hash = _hashOf(own);
     if (AvatarStore.sharedHashFor(peerUserId) == hash) return;

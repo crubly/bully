@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/app_services.dart';
 import '../../core/calls/call_controller.dart';
+import '../../core/network/ws_client.dart';
 import '../../core/security/app_lock.dart';
 import '../../core/storage/secure_store.dart';
 import '../../theme/bully_theme.dart';
@@ -52,6 +53,9 @@ class _AppShellState extends State<AppShell> {
   String? _myUsername;
   bool _micMuted = false;
   int _mobileTab = 0;
+  _ConversationEntry? _selectedDesktop;
+
+  bool _isWide(BuildContext context) => MediaQuery.sizeOf(context).width >= _wideLayoutBreakpoint;
 
   @override
   void initState() {
@@ -185,13 +189,23 @@ class _AppShellState extends State<AppShell> {
     final services = AppServices.of(context);
     final convo = await services.api.createDm(peer['id'] as String);
     if (!mounted) return;
-    Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => DmChatScreen(
-        conversationId: convo['id'] as String,
-        peerUserId: peer['id'] as String,
-        peerUsername: peer['username'] as String,
-      ),
-    ));
+    final entry = _ConversationEntry(
+      conversationId: convo['id'] as String,
+      kind: 'dm',
+      label: peer['username'] as String,
+      peerUserId: peer['id'] as String,
+    );
+    if (_isWide(context)) {
+      setState(() => _selectedDesktop = entry);
+    } else {
+      Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => DmChatScreen(
+          conversationId: entry.conversationId,
+          peerUserId: entry.peerUserId!,
+          peerUsername: entry.label,
+        ),
+      ));
+    }
     _loadConversations();
   }
 
@@ -199,13 +213,23 @@ class _AppShellState extends State<AppShell> {
     final group = await showNewGroupDialog(context);
     if (group == null) return;
     if (!mounted) return;
-    Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => GroupChatScreen(
-        conversationId: group['conversation_id'] as String,
-        groupId: group['id'] as String,
-        groupName: group['name'] as String,
-      ),
-    ));
+    final entry = _ConversationEntry(
+      conversationId: group['conversation_id'] as String,
+      kind: 'group',
+      groupId: group['id'] as String,
+      label: group['name'] as String,
+    );
+    if (_isWide(context)) {
+      setState(() => _selectedDesktop = entry);
+    } else {
+      Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => GroupChatScreen(
+          conversationId: entry.conversationId,
+          groupId: entry.groupId!,
+          groupName: entry.label,
+        ),
+      ));
+    }
     _loadConversations();
   }
 
@@ -256,7 +280,18 @@ class _AppShellState extends State<AppShell> {
       backgroundColor: BullyPalette.of(context).bgPrimary,
       appBar: AppBar(
         backgroundColor: BullyPalette.of(context).bgPrimary,
-        title: Text(_mobileTab == 0 ? 'Чаты' : 'Настройки'),
+        title: ValueListenableBuilder<bool>(
+          valueListenable: WsClient.connected,
+          builder: (context, connected, _) => Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(_mobileTab == 0 ? 'Чаты' : 'Настройки'),
+              if (!connected)
+                Text('переподключение...', style: TextStyle(color: BullyPalette.of(context).textMuted, fontSize: 11)),
+            ],
+          ),
+        ),
         actions: _mobileTab == 0
             ? [
                 if (AppLock.instance.enabled)
@@ -348,13 +383,7 @@ class _AppShellState extends State<AppShell> {
                 ..._entries.where((e) => e.kind == 'group').map((e) => Padding(
                       padding: const EdgeInsets.symmetric(vertical: 6),
                       child: InkWell(
-                        onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                          builder: (_) => GroupChatScreen(
-                            conversationId: e.conversationId,
-                            groupId: e.groupId!,
-                            groupName: e.label,
-                          ),
-                        )),
+                        onTap: () => setState(() => _selectedDesktop = e),
                         child: CircleAvatar(
                           backgroundColor: BullyColors.blurple,
                           child: Text(e.label.isNotEmpty ? e.label[0].toUpperCase() : '?'),
@@ -432,13 +461,9 @@ class _AppShellState extends State<AppShell> {
                                     child: avatarBytes == null ? const Icon(Icons.person, color: Colors.white) : null,
                                   ),
                                   title: Text(e.label, style: TextStyle(color: BullyPalette.of(context).textNormal)),
-                                  onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                                    builder: (_) => DmChatScreen(
-                                      conversationId: e.conversationId,
-                                      peerUserId: e.peerUserId ?? '',
-                                      peerUsername: e.label,
-                                    ),
-                                  )),
+                                  selected: _selectedDesktop?.conversationId == e.conversationId,
+                                  selectedTileColor: BullyColors.blurple.withValues(alpha: 0.15),
+                                  onTap: () => setState(() => _selectedDesktop = e),
                                 );
                               })
                               .toList(),
@@ -456,12 +481,26 @@ class _AppShellState extends State<AppShell> {
             ),
           ),
           Expanded(
-            child: Container(
-              color: BullyPalette.of(context).bgPrimary,
-              child: Center(
-                child: Text('Выберите чат слева или начните новый', style: TextStyle(color: BullyPalette.of(context).textMuted)),
-              ),
-            ),
+            child: _selectedDesktop == null
+                ? Container(
+                    color: BullyPalette.of(context).bgPrimary,
+                    child: Center(
+                      child: Text('Выберите чат слева или начните новый', style: TextStyle(color: BullyPalette.of(context).textMuted)),
+                    ),
+                  )
+                : _selectedDesktop!.kind == 'dm'
+                    ? DmChatScreen(
+                        key: ValueKey(_selectedDesktop!.conversationId),
+                        conversationId: _selectedDesktop!.conversationId,
+                        peerUserId: _selectedDesktop!.peerUserId ?? '',
+                        peerUsername: _selectedDesktop!.label,
+                      )
+                    : GroupChatScreen(
+                        key: ValueKey(_selectedDesktop!.conversationId),
+                        conversationId: _selectedDesktop!.conversationId,
+                        groupId: _selectedDesktop!.groupId!,
+                        groupName: _selectedDesktop!.label,
+                      ),
           ),
         ],
       ),

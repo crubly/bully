@@ -157,5 +157,13 @@ class CryptoSessionManager {
     return utf8.decode(plaintext);
   }
 
-  bool hasSession(String conversationId) => _sessions.containsKey(conversationId);
+  /// Checks in-memory sessions first, then falls back to persisted storage
+  /// — without this, every app restart looked like "no session yet" and
+  /// re-running startAsSender/prepareAsReceiver silently overwrote the real
+  /// session with a fresh one (new ephemeral keys), breaking decryption for
+  /// whichever side didn't also get reset the same way.
+  Future<bool> hasSession(String conversationId) async {
+    if (_sessions.containsKey(conversationId)) return true;
+    return (await SecureStore.getBlob('ratchet:$conversationId')) != null;
+  }
 }

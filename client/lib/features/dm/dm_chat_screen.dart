@@ -75,7 +75,7 @@ class _DmChatScreenState extends State<DmChatScreen> {
         await _handleInbound(env);
       });
 
-      if (!services.crypto.hasSession(widget.conversationId)) {
+      if (!(await services.crypto.hasSession(widget.conversationId))) {
         final passphrase = await showSetPassphraseDialog(context, otherPartyLabel: widget.peerUsername);
         if (passphrase == null) {
           if (mounted) Navigator.of(context).pop();

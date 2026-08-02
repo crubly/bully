@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
@@ -21,16 +22,28 @@ class ThemeBackdrop extends StatelessWidget {
         if (points == null && imagePath == null && videoPath == null) return const SizedBox.shrink();
 
         final dark = Theme.of(context).brightness == Brightness.dark;
+        final isMedia = imagePath != null || videoPath != null;
+        final darken = isMedia ? controller.mediaDarken : (dark ? 0.45 : 0.35);
+        final blur = isMedia ? controller.mediaBlur : 0.0;
+
+        Widget media;
+        if (points != null) {
+          media = MeshGradientBox(points: points, fallbackColor: points.first.color);
+        } else if (imagePath != null) {
+          media = Image.file(File(imagePath), fit: BoxFit.cover);
+        } else {
+          media = _VideoBackdrop(key: ValueKey(videoPath), path: videoPath!);
+        }
+
         return Stack(
           children: [
-            if (points != null)
-              Positioned.fill(child: MeshGradientBox(points: points, fallbackColor: points.first.color))
-            else if (imagePath != null)
-              Positioned.fill(child: Image.file(File(imagePath), fit: BoxFit.cover))
-            else if (videoPath != null)
-              Positioned.fill(child: _VideoBackdrop(key: ValueKey(videoPath), path: videoPath)),
+            Positioned.fill(child: media),
+            if (blur > 0)
+              Positioned.fill(
+                child: BackdropFilter(filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur), child: const SizedBox.expand()),
+              ),
             Positioned.fill(
-              child: Container(color: (dark ? Colors.black : Colors.white).withValues(alpha: dark ? 0.45 : 0.35)),
+              child: Container(color: (dark ? Colors.black : Colors.white).withValues(alpha: darken)),
             ),
           ],
         );

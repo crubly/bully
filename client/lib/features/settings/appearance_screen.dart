@@ -35,19 +35,27 @@ class _AppearanceScreenState extends State<AppearanceScreen> {
   _ThemeTab _tab = _ThemeTab.gradient;
 
   Future<void> _pickImage() async {
-    final result = await FilePicker.pickFiles(type: FileType.image);
-    final path = result?.files.single.path;
-    if (path == null) return;
-    final persisted = await _persistPickedFile(path);
-    await ThemeController.instance.setBackgroundImage(persisted);
+    try {
+      final result = await FilePicker.pickFiles(type: FileType.image);
+      final path = result?.files.single.path;
+      if (path == null) return;
+      final persisted = await _persistPickedFile(path);
+      await ThemeController.instance.setBackgroundImage(persisted);
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Не удалось выбрать файл: $e')));
+    }
   }
 
   Future<void> _pickVideo() async {
-    final result = await FilePicker.pickFiles(type: FileType.video);
-    final path = result?.files.single.path;
-    if (path == null) return;
-    final persisted = await _persistPickedFile(path);
-    await ThemeController.instance.setBackgroundVideo(persisted);
+    try {
+      final result = await FilePicker.pickFiles(type: FileType.video);
+      final path = result?.files.single.path;
+      if (path == null) return;
+      final persisted = await _persistPickedFile(path);
+      await ThemeController.instance.setBackgroundVideo(persisted);
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Не удалось выбрать файл: $e')));
+    }
   }
 
   Widget _body(BuildContext context) {
@@ -205,6 +213,23 @@ class _AppearanceScreenState extends State<AppearanceScreen> {
                             ),
                           ],
                         ),
+                        if (ThemeController.instance.hasMediaBackground) ...[
+                          const SizedBox(height: 16),
+                          Text('Размытие', style: TextStyle(color: BullyPalette.of(context).textMuted, fontSize: 12)),
+                          Slider(
+                            value: ThemeController.instance.mediaBlur,
+                            min: 0,
+                            max: 40,
+                            onChanged: (v) => ThemeController.instance.setMediaBlur(v),
+                          ),
+                          Text('Затемнение', style: TextStyle(color: BullyPalette.of(context).textMuted, fontSize: 12)),
+                          Slider(
+                            value: ThemeController.instance.mediaDarken,
+                            min: 0,
+                            max: 1,
+                            onChanged: (v) => ThemeController.instance.setMediaDarken(v),
+                          ),
+                        ],
                       ],
                     ),
                   if (_tab == _ThemeTab.presets)

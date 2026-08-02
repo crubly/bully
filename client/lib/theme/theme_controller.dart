@@ -71,6 +71,15 @@ class ThemeController extends ChangeNotifier {
   String? get backgroundVideoPath => _backgroundVideoPath;
 
   bool get hasCustomBackground => _themeGradient != null || _backgroundImagePath != null || _backgroundVideoPath != null;
+  bool get hasMediaBackground => _backgroundImagePath != null || _backgroundVideoPath != null;
+
+  // Only meaningful for the image/gif/video backdrop — blur sigma (0 = off,
+  // up to 40) and darkening scrim opacity (0..1), both user-adjustable.
+  double _mediaBlur = 0;
+  double get mediaBlur => _mediaBlur;
+
+  double _mediaDarken = 0.35;
+  double get mediaDarken => _mediaDarken;
 
   Future<void> init() async {
     _box = await Hive.openBox('appearance');
@@ -89,6 +98,20 @@ class ThemeController extends ChangeNotifier {
     }
     _backgroundImagePath = _box.get('background_image_path') as String?;
     _backgroundVideoPath = _box.get('background_video_path') as String?;
+    _mediaBlur = (_box.get('media_blur') as num?)?.toDouble() ?? 0;
+    _mediaDarken = (_box.get('media_darken') as num?)?.toDouble() ?? 0.35;
+  }
+
+  Future<void> setMediaBlur(double sigma) async {
+    _mediaBlur = sigma;
+    await _box.put('media_blur', sigma);
+    notifyListeners();
+  }
+
+  Future<void> setMediaDarken(double alpha) async {
+    _mediaDarken = alpha;
+    await _box.put('media_darken', alpha);
+    notifyListeners();
   }
 
   Future<void> setMode(ThemeMode mode) async {

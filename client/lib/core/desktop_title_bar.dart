@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/bully_theme.dart';
 import 'desktop_window.dart';
+import 'network/ws_client.dart';
 
 class DesktopTitleBar extends StatelessWidget {
   const DesktopTitleBar({super.key});
@@ -23,7 +24,20 @@ class DesktopTitleBar extends StatelessWidget {
         color: palette.bgPrimary,
         child: Row(
           children: [
-            const Expanded(child: SizedBox.shrink()),
+            Expanded(
+              child: Center(
+                child: ValueListenableBuilder<bool>(
+                  valueListenable: WsClient.connected,
+                  builder: (context, connected, _) {
+                    if (connected) return const SizedBox.shrink();
+                    return const Text(
+                      'переподключение...',
+                      style: TextStyle(color: Colors.white, fontSize: 11),
+                    );
+                  },
+                ),
+              ),
+            ),
             if (showControls) ...[
               _TitleBarButton(icon: Icons.remove, color: palette.textMuted, onTap: DesktopWindow.minimize),
               _TitleBarButton(icon: Icons.crop_square, color: palette.textMuted, onTap: DesktopWindow.toggleMaximize),

@@ -63,9 +63,11 @@ class WsClient {
   /// True once the WebSocket handshake has actually completed — connecting
   /// doesn't mean connected, and previously nothing distinguished the two,
   /// so a stuck/rejected handshake looked identical to "everything's fine,
-  /// just no messages yet" from the UI's perspective.
-  final connected = ValueNotifier<bool>(false);
-  final lastError = ValueNotifier<String?>(null);
+  /// just no messages yet" from the UI's perspective. Static so the title
+  /// bar (which lives outside AppServices, above the node/session scope)
+  /// can show it without needing a reference to this specific instance.
+  static final connected = ValueNotifier<bool>(false);
+  static final lastError = ValueNotifier<String?>(null);
 
   WsClient(this.baseUrl);
 
@@ -171,7 +173,5 @@ class WsClient {
     _pump?.cancel();
     _channel?.sink.close();
     _controller.close();
-    connected.dispose();
-    lastError.dispose();
   }
 }
