@@ -5,9 +5,9 @@ import 'package:cryptography/cryptography.dart';
 
 class PassphraseKdf {
   static final _argon2 = Argon2id(
-    memory: 64 * 1024,
-    iterations: 3,
-    parallelism: 2,
+    memory: 128 * 1024,
+    iterations: 4,
+    parallelism: 4,
     hashLength: 32,
   );
 

@@ -7,6 +7,7 @@ import '../storage/secure_store.dart';
 import 'double_ratchet.dart';
 import 'kdf.dart';
 import 'keys.dart';
+import 'security/peer_identity_store.dart';
 import 'sender_keys.dart';
 
 class GroupSessionManager {
@@ -43,6 +44,7 @@ class GroupSessionManager {
     if (iAmFirst) {
       final bundle = await api.fetchKeyBundle(otherUserId);
       final peerPublicKey = base64Decode(bundle['signed_public_key'] as String);
+      await PeerIdentityStore.checkOrPin(otherUserId, Uint8List.fromList(peerPublicKey));
       session = await RatchetSession.initAsSender(bootstrapSecret: bootstrapSecret, peerPublicKey: Uint8List.fromList(peerPublicKey));
     } else {
       session = await RatchetSession.initAsReceiver(bootstrapSecret: bootstrapSecret, myKeyPair: identityKeyPair());

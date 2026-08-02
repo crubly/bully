@@ -19,6 +19,7 @@ class CryptoSelfTest {
     await _x25519RoundTrip();
     await _hkdfDeterminism();
     await _aesGcmRoundTrip();
+    await _chacha20Poly1305RoundTrip();
     await _argon2idRoundTrip();
     await _doubleRatchetRoundTrip();
   }
@@ -74,6 +75,33 @@ class CryptoSelfTest {
     }
     if (!rejectedTampering) {
       throw CryptoSelfTestFailure('AES-256-GCM accepted a tampered ciphertext');
+    }
+  }
+
+  static Future<void> _chacha20Poly1305RoundTrip() async {
+    final aead = Chacha20.poly1305Aead();
+    final key = SecretKey(List.filled(32, 5));
+    final plaintext = utf8.encode('bully-crypto-selftest-cascade');
+    final aad = utf8.encode('aad');
+    final box = await aead.encrypt(plaintext, secretKey: key, aad: aad);
+    final decrypted = await aead.decrypt(box, secretKey: key, aad: aad);
+    if (!_bytesEqual(Uint8List.fromList(decrypted), Uint8List.fromList(plaintext))) {
+      throw CryptoSelfTestFailure('ChaCha20-Poly1305 round-trip did not recover plaintext');
+    }
+
+    final tampered = SecretBox(
+      box.cipherText,
+      nonce: box.nonce,
+      mac: Mac(box.mac.bytes.map((b) => b ^ 0xFF).toList()),
+    );
+    var rejectedTampering = false;
+    try {
+      await aead.decrypt(tampered, secretKey: key, aad: aad);
+    } catch (_) {
+      rejectedTampering = true;
+    }
+    if (!rejectedTampering) {
+      throw CryptoSelfTestFailure('ChaCha20-Poly1305 accepted a tampered ciphertext');
     }
   }
 

@@ -58,7 +58,8 @@ func main() {
 	userHandler := user.NewHandler(pool)
 	keysHandler := keys.NewHandler(pool)
 	convoHandler := convo.NewHandler(pool)
-	relayHandler := relay.NewHandler(pool, hub, convoHandler, sessionHandler, cfg.JWTSecret)
+	offlineQueue := relay.NewOfflineQueue(rdb)
+	relayHandler := relay.NewHandler(pool, hub, convoHandler, sessionHandler, offlineQueue, cfg.JWTSecret)
 	iceHandler := iceservers.NewHandler(cfg.TURNHost, cfg.TURNSecret)
 
 	r := chi.NewRouter()

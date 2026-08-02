@@ -100,7 +100,25 @@ class _NodePickerScreenState extends State<NodePickerScreen> {
                   controller: _urlController,
                   decoration: const InputDecoration(labelText: 'Адрес ноды', hintText: 'http://192.168.1.10:8080'),
                   keyboardType: TextInputType.url,
+                  onChanged: (_) => setState(() {}),
                 ),
+                if (_urlController.text.trim().startsWith('http://')) ...[
+                  const SizedBox(height: 8),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.warning_amber, color: BullyColors.danger, size: 16),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'http:// не шифрует соединение до сервера — роутер/провайдер видит метаданные (кто с кем соединяется). '
+                          'Сам текст переписки всё равно защищён E2E-шифрованием, но по возможности используйте https://.',
+                          style: TextStyle(color: BullyColors.danger, fontSize: 11),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
                 if (_error != null) ...[
                   const SizedBox(height: 8),
                   Text(_error!, style: const TextStyle(color: BullyColors.danger)),
@@ -123,6 +141,16 @@ class _NodePickerScreenState extends State<NodePickerScreen> {
                           n.flaggedCompromised ? 'Скомпрометирована — ${n.url}' : n.url,
                           style: TextStyle(color: n.flaggedCompromised ? BullyColors.danger : BullyPalette.of(context).textMuted),
                         ),
+                        trailing: n.flaggedCompromised
+                            ? IconButton(
+                                icon: const Icon(Icons.clear, size: 18),
+                                tooltip: 'Снять пометку',
+                                onPressed: () async {
+                                  await NodeStore.setFlagged(n.url, false);
+                                  setState(() => _known = NodeStore.list());
+                                },
+                              )
+                            : null,
                         onTap: () {
                           _urlController.text = n.url;
                           _check();

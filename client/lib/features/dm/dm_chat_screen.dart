@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../core/app_services.dart';
+import '../../core/crypto/session_manager.dart';
 import '../../core/network/node_trust_monitor.dart';
 import '../../core/network/ws_client.dart';
 import '../../core/storage/chat_history_store.dart';
@@ -12,6 +13,7 @@ import '../../core/storage/secure_store.dart';
 import '../../theme/bully_theme.dart';
 import '../calls/call_screen.dart';
 import '../chat_setup/set_passphrase_dialog.dart';
+import 'safety_number_screen.dart';
 
 class ChatMessage {
   final String senderId;
@@ -82,11 +84,48 @@ class _DmChatScreenState extends State<DmChatScreen> {
 
         final iAmInitiator = (_myUserId ?? '').compareTo(widget.peerUserId) < 0;
         if (iAmInitiator) {
-          await services.crypto.startAsSender(
-            conversationId: widget.conversationId,
-            peerUserId: widget.peerUserId,
-            passphrase: passphrase,
-          );
+          try {
+            await services.crypto.startAsSender(
+              conversationId: widget.conversationId,
+              peerUserId: widget.peerUserId,
+              passphrase: passphrase,
+            );
+          } on PeerIdentityChangedException {
+            if (!mounted) return;
+            final trust = await showDialog<bool>(
+              context: context,
+              barrierDismissible: false,
+              builder: (context) => AlertDialog(
+                backgroundColor: BullyPalette.of(context).bgSecondary,
+                title: const Text('Ключ собеседника изменился', style: TextStyle(color: BullyColors.danger)),
+                content: Text(
+                  'Ключ шифрования @${widget.peerUsername} не совпадает с тем, что был при первом контакте. '
+                  'Это нормально, если собеседник переустановил приложение — но так же выглядит подмена ключа '
+                  'атакующим. Сверьте код безопасности лично перед тем, как доверять новому ключу.',
+                  style: TextStyle(color: BullyPalette.of(context).textNormal),
+                ),
+                actions: [
+                  TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Отмена')),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(true),
+                    child: const Text('Доверять новому ключу', style: TextStyle(color: BullyColors.danger)),
+                  ),
+                ],
+              ),
+            );
+            if (trust != true) {
+              if (mounted) Navigator.of(context).pop();
+              return;
+            }
+            final bundle = await services.api.fetchKeyBundle(widget.peerUserId);
+            final peerPublicKey = base64Decode(bundle['signed_public_key'] as String);
+            await services.crypto.trustNewPeerIdentity(widget.peerUserId, peerPublicKey);
+            await services.crypto.startAsSender(
+              conversationId: widget.conversationId,
+              peerUserId: widget.peerUserId,
+              passphrase: passphrase,
+            );
+          }
         } else {
           await services.crypto.prepareAsReceiver(conversationId: widget.conversationId, passphrase: passphrase);
         }
@@ -191,6 +230,13 @@ class _DmChatScreenState extends State<DmChatScreen> {
           ],
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.verified_user_outlined),
+            tooltip: 'Проверка безопасности',
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => SafetyNumberScreen(peerUserId: widget.peerUserId, peerUsername: widget.peerUsername),
+            )),
+          ),
           IconButton(icon: const Icon(Icons.call), tooltip: 'Аудиозвонок', onPressed: () => _startCall(video: false)),
           IconButton(icon: const Icon(Icons.videocam), tooltip: 'Видеозвонок', onPressed: () => _startCall(video: true)),
         ],

@@ -71,6 +71,7 @@ class WsClient {
   }
 
   Future<void> _open() async {
+    NodeTrustMonitor.instance.onConnectionOpened();
     final wsBase = baseUrl.replaceFirst('http', 'ws');
     _channel = WebSocketChannel.connect(Uri.parse('$wsBase/ws?token=$_token'));
     _channel!.stream.listen(

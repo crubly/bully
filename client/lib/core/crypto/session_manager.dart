@@ -6,6 +6,9 @@ import '../storage/secure_store.dart';
 import 'double_ratchet.dart';
 import 'kdf.dart';
 import 'keys.dart';
+import 'security/peer_identity_store.dart';
+
+export 'security/peer_identity_store.dart' show PeerIdentityChangedException;
 
 class CryptoSessionManager {
   final ApiClient api;
@@ -50,6 +53,11 @@ class CryptoSessionManager {
     );
   }
 
+  /// Explicitly re-pins a peer's identity key after the caller has shown
+  /// the user a warning and they chose to trust it anyway.
+  Future<void> trustNewPeerIdentity(String peerUserId, Uint8List peerPublicKey) =>
+      PeerIdentityStore.trust(peerUserId, peerPublicKey);
+
   Future<void> startAsSender({
     required String conversationId,
     required String peerUserId,
@@ -59,6 +67,8 @@ class CryptoSessionManager {
     final bootstrapSecret = await PassphraseKdf.deriveBootstrapSecret(passphrase, conversationId);
     final bundle = await api.fetchKeyBundle(peerUserId);
     final peerPublicKey = base64Decode(bundle['signed_public_key'] as String);
+
+    await PeerIdentityStore.checkOrPin(peerUserId, Uint8List.fromList(peerPublicKey));
 
     final session = await RatchetSession.initAsSender(
       bootstrapSecret: bootstrapSecret,

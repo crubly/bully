@@ -26,11 +26,12 @@ type Handler struct {
 	Hub       *ws.Hub
 	Convo     *convo.Handler
 	Sessions  *session.Handler
+	Offline   *OfflineQueue
 	JWTSecret string
 }
 
-func NewHandler(db *pgxpool.Pool, hub *ws.Hub, convoHandler *convo.Handler, sessions *session.Handler, jwtSecret string) *Handler {
-	return &Handler{DB: db, Hub: hub, Convo: convoHandler, Sessions: sessions, JWTSecret: jwtSecret}
+func NewHandler(db *pgxpool.Pool, hub *ws.Hub, convoHandler *convo.Handler, sessions *session.Handler, offline *OfflineQueue, jwtSecret string) *Handler {
+	return &Handler{DB: db, Hub: hub, Convo: convoHandler, Sessions: sessions, Offline: offline, JWTSecret: jwtSecret}
 }
 
 func (h *Handler) Serve(w http.ResponseWriter, r *http.Request) {
@@ -94,14 +95,9 @@ func (h *Handler) handleInbound(ctx context.Context, env ws.Envelope) {
 		return
 	}
 
-	var messageID string
-	err = h.DB.QueryRow(ctx,
-		`INSERT INTO messages (conversation_id, sender_id, ciphertext, header)
-		 VALUES ($1, $2, $3, $4) RETURNING id`,
-		env.ConversationID, env.FromUserID, env.Ciphertext, env.Header,
-	).Scan(&messageID)
+	messageID, err := h.Offline.Enqueue(ctx, env)
 	if err != nil {
-		log.Printf("relay: persist failed: %v", err)
+		log.Printf("relay: enqueue failed: %v", err)
 		return
 	}
 	env.MessageID = messageID
@@ -122,26 +118,29 @@ func (h *Handler) handleInbound(ctx context.Context, env ws.Envelope) {
 }
 
 func (h *Handler) deliverOffline(ctx context.Context, userID string, conn *ws.Conn) {
-	rows, err := h.DB.Query(ctx, `
-		SELECT m.id, m.conversation_id, m.sender_id, m.ciphertext, m.header
-		FROM messages m
-		JOIN conversation_members cm ON cm.conversation_id = m.conversation_id
-		WHERE cm.user_id = $1
-		ORDER BY m.created_at ASC
-		LIMIT 500`, userID)
+	rows, err := h.DB.Query(ctx, `SELECT conversation_id FROM conversation_members WHERE user_id = $1`, userID)
 	if err != nil {
-		log.Printf("relay: offline replay query failed: %v", err)
+		log.Printf("relay: offline conversation lookup failed: %v", err)
 		return
 	}
-	defer rows.Close()
-
+	var conversationIDs []string
 	for rows.Next() {
-		var env ws.Envelope
-		if err := rows.Scan(&env.MessageID, &env.ConversationID, &env.FromUserID, &env.Ciphertext, &env.Header); err != nil {
+		var id string
+		if err := rows.Scan(&id); err == nil {
+			conversationIDs = append(conversationIDs, id)
+		}
+	}
+	rows.Close()
+
+	for _, convID := range conversationIDs {
+		envs, err := h.Offline.ForConversation(ctx, convID)
+		if err != nil {
+			log.Printf("relay: offline queue read failed for %s: %v", convID, err)
 			continue
 		}
-		env.Type = "message"
-		env.ToUserID = userID
-		conn.Send(env)
+		for _, env := range envs {
+			env.ToUserID = userID
+			conn.Send(env)
+		}
 	}
 }

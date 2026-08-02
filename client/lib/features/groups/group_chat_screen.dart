@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../core/app_services.dart';
+import '../../core/crypto/security/peer_identity_store.dart';
 import '../../core/network/node_trust_monitor.dart';
 import '../../core/network/ws_client.dart';
 import '../../core/storage/chat_history_store.dart';
@@ -79,12 +81,49 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
           if (mounted) Navigator.of(context).pop();
           return;
         }
-        await services.groupCrypto.rekeyAndDistribute(
-          groupId: widget.groupId,
-          myUserId: _myUserId!,
-          otherMemberIds: otherMemberIds,
-          passphrase: passphrase,
-        );
+        try {
+          await services.groupCrypto.rekeyAndDistribute(
+            groupId: widget.groupId,
+            myUserId: _myUserId!,
+            otherMemberIds: otherMemberIds,
+            passphrase: passphrase,
+          );
+        } on PeerIdentityChangedException catch (e) {
+          if (!mounted) return;
+          final trust = await showDialog<bool>(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => AlertDialog(
+              backgroundColor: BullyPalette.of(context).bgSecondary,
+              title: const Text('Ключ участника изменился', style: TextStyle(color: BullyColors.danger)),
+              content: Text(
+                'Ключ шифрования одного из участников (${e.peerUserId}) не совпадает с тем, что был раньше. '
+                'Это нормально при переустановке приложения — но так же выглядит подмена ключа атакующим.',
+                style: TextStyle(color: BullyPalette.of(context).textNormal),
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Отмена')),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  child: const Text('Доверять новому ключу', style: TextStyle(color: BullyColors.danger)),
+                ),
+              ],
+            ),
+          );
+          if (trust != true) {
+            if (mounted) Navigator.of(context).pop();
+            return;
+          }
+          final bundle = await services.api.fetchKeyBundle(e.peerUserId);
+          final peerPublicKey = Uint8List.fromList(base64Decode(bundle['signed_public_key'] as String));
+          await PeerIdentityStore.trust(e.peerUserId, peerPublicKey);
+          await services.groupCrypto.rekeyAndDistribute(
+            groupId: widget.groupId,
+            myUserId: _myUserId!,
+            otherMemberIds: otherMemberIds,
+            passphrase: passphrase,
+          );
+        }
       }
 
       if (mounted) setState(() => _ready = true);

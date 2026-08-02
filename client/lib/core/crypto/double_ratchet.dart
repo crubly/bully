@@ -42,7 +42,7 @@ class RatchetSession {
   int _nr = 0;
   int _pn = 0;
 
-  final Map<String, Uint8List> _skippedKeys = {};
+  final Map<String, ({Uint8List messageKeyA, Uint8List messageKeyB})> _skippedKeys = {};
 
   static const _maxSkip = 1000;
 
@@ -69,6 +69,10 @@ class RatchetSession {
     return RatchetSession._(bootstrapSecret, myKeyPair);
   }
 
+  // Messages are encrypted in a cascade: AES-256-GCM first, then the whole
+  // box is wrapped again in ChaCha20-Poly1305 under an independently derived
+  // key. Breaking the confidentiality/integrity would require breaking BOTH
+  // ciphers, not just one.
   Future<RatchetMessage> encrypt(Uint8List plaintext) async {
     if (_sendingChainKey == null) {
       throw StateError('sending chain not initialized — call initAsSender or receive a message first');
@@ -77,11 +81,14 @@ class RatchetSession {
     _sendingChainKey = stepped.chainKey;
 
     final header = _MessageHeader(_dhSelf.publicKeyBytes, _pn, _ns).encode();
-    final aead = AesGcm.with256bits();
-    final secretKey = SecretKey(stepped.messageKey);
-    final box = await aead.encrypt(plaintext, secretKey: secretKey, aad: header);
+    final innerBox = await AesGcm.with256bits().encrypt(plaintext, secretKey: SecretKey(stepped.messageKeyA), aad: header);
+    final outerBox = await Chacha20.poly1305Aead().encrypt(
+      innerBox.concatenation(),
+      secretKey: SecretKey(stepped.messageKeyB),
+      aad: header,
+    );
     _ns++;
-    return RatchetMessage(header, Uint8List.fromList(box.concatenation()));
+    return RatchetMessage(header, Uint8List.fromList(outerBox.concatenation()));
   }
 
   Future<Uint8List> decrypt(Uint8List headerBytes, Uint8List ciphertextWithNonceAndMac) async {
@@ -94,20 +101,21 @@ class RatchetSession {
     }
 
     final cached = _skippedKeys.remove('${base64Encode(header.dhPublicKey)}:${header.messageNumber}');
-    Uint8List messageKey;
+    ({Uint8List messageKeyA, Uint8List messageKeyB}) messageKeys;
     if (cached != null) {
-      messageKey = cached;
+      messageKeys = cached;
     } else {
       await _skipMessageKeys(header.messageNumber);
       final stepped = await _kdfChainKey(_receivingChainKey!);
       _receivingChainKey = stepped.chainKey;
-      messageKey = stepped.messageKey;
+      messageKeys = (messageKeyA: stepped.messageKeyA, messageKeyB: stepped.messageKeyB);
       _nr++;
     }
 
-    final aead = AesGcm.with256bits();
-    final box = SecretBox.fromConcatenation(ciphertextWithNonceAndMac, nonceLength: 12, macLength: 16);
-    final plaintext = await aead.decrypt(box, secretKey: SecretKey(messageKey), aad: headerBytes);
+    final outerBox = SecretBox.fromConcatenation(ciphertextWithNonceAndMac, nonceLength: 12, macLength: 16);
+    final innerBytes = await Chacha20.poly1305Aead().decrypt(outerBox, secretKey: SecretKey(messageKeys.messageKeyB), aad: headerBytes);
+    final innerBox = SecretBox.fromConcatenation(Uint8List.fromList(innerBytes), nonceLength: 12, macLength: 16);
+    final plaintext = await AesGcm.with256bits().decrypt(innerBox, secretKey: SecretKey(messageKeys.messageKeyA), aad: headerBytes);
     return Uint8List.fromList(plaintext);
   }
 
@@ -119,7 +127,7 @@ class RatchetSession {
     while (_nr < until) {
       final stepped = await _kdfChainKey(_receivingChainKey!);
       _receivingChainKey = stepped.chainKey;
-      _skippedKeys['${base64Encode(_dhRemote!)}:$_nr'] = stepped.messageKey;
+      _skippedKeys['${base64Encode(_dhRemote!)}:$_nr'] = (messageKeyA: stepped.messageKeyA, messageKeyB: stepped.messageKeyB);
       _nr++;
     }
   }
@@ -153,11 +161,16 @@ class RatchetSession {
     return (rootKey: Uint8List.fromList(bytes.sublist(0, 32)), chainKey: Uint8List.fromList(bytes.sublist(32, 64)));
   }
 
-  Future<({Uint8List chainKey, Uint8List messageKey})> _kdfChainKey(Uint8List chainKey) async {
+  Future<({Uint8List chainKey, Uint8List messageKeyA, Uint8List messageKeyB})> _kdfChainKey(Uint8List chainKey) async {
     final hmac = Hmac.sha256();
     final nextChain = await hmac.calculateMac(utf8.encode('chain'), secretKey: SecretKey(chainKey));
-    final messageKey = await hmac.calculateMac(utf8.encode('message'), secretKey: SecretKey(chainKey));
-    return (chainKey: Uint8List.fromList(nextChain.bytes), messageKey: Uint8List.fromList(messageKey.bytes));
+    final messageKeyA = await hmac.calculateMac(utf8.encode('message-a'), secretKey: SecretKey(chainKey));
+    final messageKeyB = await hmac.calculateMac(utf8.encode('message-b'), secretKey: SecretKey(chainKey));
+    return (
+      chainKey: Uint8List.fromList(nextChain.bytes),
+      messageKeyA: Uint8List.fromList(messageKeyA.bytes),
+      messageKeyB: Uint8List.fromList(messageKeyB.bytes),
+    );
   }
 
   bool _bytesEqual(Uint8List a, Uint8List b) {
@@ -180,7 +193,7 @@ class RatchetSession {
       'ns': _ns,
       'nr': _nr,
       'pn': _pn,
-      'skipped': _skippedKeys.map((k, v) => MapEntry(k, base64Encode(v))),
+      'skipped': _skippedKeys.map((k, v) => MapEntry(k, {'a': base64Encode(v.messageKeyA), 'b': base64Encode(v.messageKeyB)})),
     };
   }
 
@@ -198,7 +211,13 @@ class RatchetSession {
     session._nr = json['nr'] as int;
     session._pn = json['pn'] as int;
     final skipped = (json['skipped'] as Map<String, dynamic>?) ?? {};
-    skipped.forEach((k, v) => session._skippedKeys[k] = base64Decode(v as String));
+    skipped.forEach((k, v) {
+      final map = v as Map;
+      session._skippedKeys[k] = (
+        messageKeyA: Uint8List.fromList(base64Decode(map['a'] as String)),
+        messageKeyB: Uint8List.fromList(base64Decode(map['b'] as String)),
+      );
+    });
     return session;
   }
 }
