@@ -157,6 +157,15 @@ class CryptoSessionManager {
     return utf8.decode(plaintext);
   }
 
+  /// Forgets a conversation's ratchet session (memory + disk) — use when
+  /// both sides need to re-establish encryption from scratch, e.g. after
+  /// their states have desynced (each side regenerated independently at
+  /// different times, so their keys no longer match).
+  Future<void> resetSession(String conversationId) async {
+    _sessions.remove(conversationId);
+    await SecureStore.deleteBlob('ratchet:$conversationId');
+  }
+
   /// Checks in-memory sessions first, then falls back to persisted storage
   /// — without this, every app restart looked like "no session yet" and
   /// re-running startAsSender/prepareAsReceiver silently overwrote the real

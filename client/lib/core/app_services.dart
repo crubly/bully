@@ -8,6 +8,7 @@ import 'avatar/avatar_service.dart';
 import 'calls/call_controller.dart';
 import 'crypto/group_session_manager.dart';
 import 'crypto/session_manager.dart';
+import 'messaging/message_inbox.dart';
 import 'network/api_client.dart';
 import 'network/ws_client.dart';
 import 'storage/secure_store.dart';
@@ -21,6 +22,7 @@ class AppServices extends InheritedWidget {
   final BackgroundSyncService sync;
   final CallController calls;
   final AvatarService avatars;
+  final MessageInbox inbox;
 
   AppServices._({
     super.key,
@@ -32,6 +34,7 @@ class AppServices extends InheritedWidget {
     required this.sync,
     required this.calls,
     required this.avatars,
+    required this.inbox,
   });
 
   factory AppServices({Key? key, required Widget child, required String nodeUrl, ApiClient? api, WsClient? ws}) {
@@ -48,6 +51,7 @@ class AppServices extends InheritedWidget {
       sync: BackgroundSyncService(),
       calls: CallController(resolvedApi, resolvedWs, resolvedCrypto),
       avatars: AvatarService(resolvedWs, resolvedCrypto),
+      inbox: MessageInbox(resolvedWs, resolvedCrypto),
     );
   }
 

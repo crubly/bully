@@ -43,11 +43,18 @@ class DmChatScreen extends StatefulWidget {
 class _DmChatScreenState extends State<DmChatScreen> {
   final _messages = <ChatMessage>[];
   final _input = TextEditingController();
-  StreamSubscription<RelayEnvelope>? _sub;
+  StreamSubscription<String>? _inboxSub;
   StreamSubscription<String>? _avatarSub;
   String? _myUserId;
   bool _ready = false;
   String? _initError;
+
+  void _reloadFromHistory() {
+    final history = ChatHistoryStore.messagesFor(widget.conversationId);
+    _messages
+      ..clear()
+      ..addAll(history.map((m) => ChatMessage(m.senderId, m.text, m.isMine)));
+  }
 
   @override
   void initState() {
@@ -61,18 +68,12 @@ class _DmChatScreenState extends State<DmChatScreen> {
       final services = AppServices.of(context);
       _myUserId = await SecureStore.getUserId(services.api.baseUrl);
 
-      final history = ChatHistoryStore.messagesFor(widget.conversationId);
-      _messages.clear();
-      _messages.addAll(history.map((m) => ChatMessage(m.senderId, m.text, m.isMine)));
+      _reloadFromHistory();
 
-      _sub?.cancel();
-      _sub = services.ws.messages.listen((env) async {
-        if (env.conversationId != widget.conversationId || env.type != 'message') return;
-
-        if (env.messageId != null && ChatHistoryStore.messagesFor(widget.conversationId).any((m) => m.id == env.messageId)) {
-          return;
-        }
-        await _handleInbound(env);
+      _inboxSub?.cancel();
+      _inboxSub = services.inbox.onConversationUpdated.listen((conversationId) {
+        if (conversationId != widget.conversationId || !mounted) return;
+        setState(_reloadFromHistory);
       });
 
       if (!(await services.crypto.hasSession(widget.conversationId))) {
@@ -142,24 +143,27 @@ class _DmChatScreenState extends State<DmChatScreen> {
     }
   }
 
-  Future<void> _handleInbound(RelayEnvelope env) async {
-    try {
-      final services = AppServices.of(context);
-      final header = base64Decode(env.header!);
-      final ciphertext = base64Decode(env.ciphertext!);
-      final plaintext = await services.crypto.decrypt(widget.conversationId, header, ciphertext);
-      await ChatHistoryStore.append(MessageRecord(
-        id: env.messageId ?? _uuid.v4(),
-        conversationId: widget.conversationId,
-        senderId: env.fromUserId,
-        text: plaintext,
-        isMine: false,
-        timestampMs: DateTime.now().millisecondsSinceEpoch,
-      ));
-      setState(() => _messages.add(ChatMessage(env.fromUserId, plaintext, false)));
-    } catch (e) {
-      setState(() => _messages.add(ChatMessage(env.fromUserId, '[не удалось расшифровать сообщение]', false)));
-    }
+  Future<void> _resetEncryption() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: BullyPalette.of(context).bgSecondary,
+        title: Text('Сбросить шифрование?', style: TextStyle(color: BullyPalette.of(context).textNormal)),
+        content: Text(
+          'Локальная сессия шифрования этого чата будет забыта. При следующем открытии чата с обеих сторон '
+          'нужно будет заново ввести пароль шифрования (одинаковый на обоих устройствах). Используйте, если '
+          'сообщения перестали доставляться или расшифровываться.',
+          style: TextStyle(color: BullyPalette.of(context).textNormal),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Отмена')),
+          TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Сбросить', style: TextStyle(color: BullyColors.danger))),
+        ],
+      ),
+    );
+    if (confirm != true || !mounted) return;
+    await AppServices.of(context).crypto.resetSession(widget.conversationId);
+    if (mounted) Navigator.of(context).pop();
   }
 
   bool _blockIfCompromised() {
@@ -216,7 +220,7 @@ class _DmChatScreenState extends State<DmChatScreen> {
 
   @override
   void dispose() {
-    _sub?.cancel();
+    _inboxSub?.cancel();
     _avatarSub?.cancel();
     super.dispose();
   }
@@ -245,6 +249,15 @@ class _DmChatScreenState extends State<DmChatScreen> {
           ),
           IconButton(icon: const Icon(Icons.call), tooltip: 'Аудиозвонок', onPressed: () => _startCall(video: false)),
           IconButton(icon: const Icon(Icons.videocam), tooltip: 'Видеозвонок', onPressed: () => _startCall(video: true)),
+          PopupMenuButton<void>(
+            icon: const Icon(Icons.more_vert),
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                onTap: _resetEncryption,
+                child: const Text('Сбросить шифрование чата'),
+              ),
+            ],
+          ),
         ],
       ),
       body: _ready
