@@ -1,4 +1,8 @@
+import 'dart:io';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../../theme/bully_theme.dart';
 import '../../theme/color_wheel.dart';
@@ -7,7 +11,17 @@ import '../../theme/theme_controller.dart';
 import 'app_icon_screen.dart';
 import 'gradient_editor.dart';
 
-enum _ThemeTab { gradient, presets }
+enum _ThemeTab { gradient, media, presets }
+
+Future<String> _persistPickedFile(String sourcePath) async {
+  final dir = await getApplicationSupportDirectory();
+  final mediaDir = Directory('${dir.path}/theme_media');
+  if (!await mediaDir.exists()) await mediaDir.create(recursive: true);
+  final extension = sourcePath.contains('.') ? sourcePath.split('.').last : 'bin';
+  final dest = File('${mediaDir.path}/background_${DateTime.now().microsecondsSinceEpoch}.$extension');
+  await File(sourcePath).copy(dest.path);
+  return dest.path;
+}
 
 class AppearanceScreen extends StatefulWidget {
   final bool embedded;
@@ -19,6 +33,22 @@ class AppearanceScreen extends StatefulWidget {
 
 class _AppearanceScreenState extends State<AppearanceScreen> {
   _ThemeTab _tab = _ThemeTab.gradient;
+
+  Future<void> _pickImage() async {
+    final result = await FilePicker.pickFiles(type: FileType.image);
+    final path = result?.files.single.path;
+    if (path == null) return;
+    final persisted = await _persistPickedFile(path);
+    await ThemeController.instance.setBackgroundImage(persisted);
+  }
+
+  Future<void> _pickVideo() async {
+    final result = await FilePicker.pickFiles(type: FileType.video);
+    final path = result?.files.single.path;
+    if (path == null) return;
+    final persisted = await _persistPickedFile(path);
+    await ThemeController.instance.setBackgroundVideo(persisted);
+  }
 
   Widget _body(BuildContext context) {
     return ListenableBuilder(
@@ -111,6 +141,7 @@ class _AppearanceScreenState extends State<AppearanceScreen> {
                   SegmentedButton<_ThemeTab>(
                     segments: const [
                       ButtonSegment(value: _ThemeTab.gradient, label: Text('Градиент'), icon: Icon(Icons.gradient, size: 16)),
+                      ButtonSegment(value: _ThemeTab.media, label: Text('Медиа'), icon: Icon(Icons.image, size: 16)),
                       ButtonSegment(value: _ThemeTab.presets, label: Text('Готовые'), icon: Icon(Icons.style, size: 16)),
                     ],
                     selected: {_tab},
@@ -127,6 +158,46 @@ class _AppearanceScreenState extends State<AppearanceScreen> {
                             ],
                         onChanged: (points) => ThemeController.instance.setThemeGradientPoints(points),
                       ),
+                    ),
+                  if (_tab == _ThemeTab.media)
+                    Column(
+                      children: [
+                        if (ThemeController.instance.backgroundImagePath != null)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Image.file(File(ThemeController.instance.backgroundImagePath!), height: 100, fit: BoxFit.cover),
+                            ),
+                          ),
+                        if (ThemeController.instance.backgroundVideoPath != null)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: Text(
+                              'Видео установлено: ${ThemeController.instance.backgroundVideoPath!.split('/').last}',
+                              style: TextStyle(color: BullyPalette.of(context).textMuted, fontSize: 12),
+                            ),
+                          ),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: _pickImage,
+                                icon: const Icon(Icons.image_outlined, size: 18),
+                                label: const Text('Картинка / GIF'),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: _pickVideo,
+                                icon: const Icon(Icons.movie_outlined, size: 18),
+                                label: const Text('Видео'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   if (_tab == _ThemeTab.presets)
                     Wrap(

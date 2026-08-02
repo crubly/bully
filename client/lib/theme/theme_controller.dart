@@ -58,10 +58,19 @@ class ThemeController extends ChangeNotifier {
   Color? _accentColor;
   Color get accentColor => _accentColor ?? defaultAccentColor;
 
-  // Тема: gradient that tints the whole messenger's background surfaces.
-  // Independent from the accent color above.
+  // Тема: gradient OR image/gif OR video that tints/fills the whole
+  // messenger's background surfaces as ONE shared backdrop. Only one of the
+  // three is active at a time. Independent from the accent color above.
   List<AccentPoint>? _themeGradient;
   List<AccentPoint>? get themeGradient => _themeGradient;
+
+  String? _backgroundImagePath;
+  String? get backgroundImagePath => _backgroundImagePath;
+
+  String? _backgroundVideoPath;
+  String? get backgroundVideoPath => _backgroundVideoPath;
+
+  bool get hasCustomBackground => _themeGradient != null || _backgroundImagePath != null || _backgroundVideoPath != null;
 
   Future<void> init() async {
     _box = await Hive.openBox('appearance');
@@ -78,6 +87,8 @@ class ThemeController extends ChangeNotifier {
     if (gradientRaw != null && gradientRaw.length >= 2) {
       _themeGradient = gradientRaw.map(AccentPoint.fromMap).toList();
     }
+    _backgroundImagePath = _box.get('background_image_path') as String?;
+    _backgroundVideoPath = _box.get('background_video_path') as String?;
   }
 
   Future<void> setMode(ThemeMode mode) async {
@@ -105,13 +116,41 @@ class ThemeController extends ChangeNotifier {
 
   Future<void> setThemeGradientPoints(List<AccentPoint> points) async {
     _themeGradient = points;
+    _backgroundImagePath = null;
+    _backgroundVideoPath = null;
     await _box.put('theme_gradient_points', points.map((p) => p.toMap()).toList());
+    await _box.delete('background_image_path');
+    await _box.delete('background_video_path');
+    notifyListeners();
+  }
+
+  Future<void> setBackgroundImage(String path) async {
+    _backgroundImagePath = path;
+    _backgroundVideoPath = null;
+    _themeGradient = null;
+    await _box.put('background_image_path', path);
+    await _box.delete('background_video_path');
+    await _box.delete('theme_gradient_points');
+    notifyListeners();
+  }
+
+  Future<void> setBackgroundVideo(String path) async {
+    _backgroundVideoPath = path;
+    _backgroundImagePath = null;
+    _themeGradient = null;
+    await _box.put('background_video_path', path);
+    await _box.delete('background_image_path');
+    await _box.delete('theme_gradient_points');
     notifyListeners();
   }
 
   Future<void> resetThemeGradient() async {
     _themeGradient = null;
+    _backgroundImagePath = null;
+    _backgroundVideoPath = null;
     await _box.delete('theme_gradient_points');
+    await _box.delete('background_image_path');
+    await _box.delete('background_video_path');
     notifyListeners();
   }
 

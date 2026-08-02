@@ -21,13 +21,6 @@ class BullyColors {
 
 Color _tinted(double hue, double saturation, double value) => HSVColor.fromAHSV(1, hue, saturation, value).toColor();
 
-class _TintedBackgrounds {
-  final Color bgPrimary;
-  final Color bgSecondary;
-  final Color bgTertiary;
-  const _TintedBackgrounds(this.bgPrimary, this.bgSecondary, this.bgTertiary);
-}
-
 Color? _themeBlend() {
   final points = ThemeController.instance.themeGradient;
   if (points == null || points.isEmpty) return null;
@@ -41,30 +34,15 @@ Color? _themeBlend() {
   return Color.from(alpha: 1, red: r / n, green: g / n, blue: b / n);
 }
 
-_TintedBackgrounds _backgroundsFor(Brightness brightness) {
+/// Solid tinted color used ONLY for modal overlays (dialogs/popup menus) —
+/// those need to stand out against the shared backdrop, so they never go
+/// transparent even when a custom background is active.
+Color _modalSurface(Brightness brightness) {
   final blend = _themeBlend();
   final dark = brightness == Brightness.dark;
-  if (blend == null) {
-    return dark
-        ? const _TintedBackgrounds(BullyColors.bgPrimary, BullyColors.bgSecondary, BullyColors.bgTertiary)
-        : const _TintedBackgrounds(BullyColors.bgPrimaryLight, BullyColors.bgSecondaryLight, BullyColors.bgTertiaryLight);
-  }
+  if (blend == null) return dark ? BullyColors.bgSecondary : BullyColors.bgSecondaryLight;
   final hsv = HSVColor.fromColor(blend);
-  // bgPrimary goes fully transparent so the real ThemeBackdrop mesh gradient
-  // shows through the main canvas — chrome (cards/tiles/inputs) stays a
-  // solid tinted color derived from the blend so text stays legible.
-  if (dark) {
-    return _TintedBackgrounds(
-      Colors.transparent,
-      _tinted(hsv.hue, hsv.saturation, 0.20),
-      _tinted(hsv.hue, hsv.saturation, 0.14),
-    );
-  }
-  return _TintedBackgrounds(
-    Colors.transparent,
-    _tinted(hsv.hue, hsv.saturation * 0.6, 0.955),
-    _tinted(hsv.hue, hsv.saturation * 0.65, 0.895),
-  );
+  return _tinted(hsv.hue, dark ? hsv.saturation : hsv.saturation * 0.6, dark ? 0.20 : 0.955);
 }
 
 class BullyPalette {
@@ -84,11 +62,14 @@ class BullyPalette {
 
   static BullyPalette of(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
-    final bg = _backgroundsFor(dark ? Brightness.dark : Brightness.light);
+    final custom = ThemeController.instance.hasCustomBackground;
+    final defaults = dark
+        ? const (bgPrimary: BullyColors.bgPrimary, bgSecondary: BullyColors.bgSecondary, bgTertiary: BullyColors.bgTertiary)
+        : const (bgPrimary: BullyColors.bgPrimaryLight, bgSecondary: BullyColors.bgSecondaryLight, bgTertiary: BullyColors.bgTertiaryLight);
     return BullyPalette._(
-      bgPrimary: bg.bgPrimary,
-      bgSecondary: bg.bgSecondary,
-      bgTertiary: bg.bgTertiary,
+      bgPrimary: custom ? Colors.transparent : defaults.bgPrimary,
+      bgSecondary: custom ? Colors.transparent : defaults.bgSecondary,
+      bgTertiary: custom ? Colors.transparent : defaults.bgTertiary,
       textNormal: dark ? BullyColors.textNormal : BullyColors.textNormalLight,
       textMuted: dark ? BullyColors.textMuted : BullyColors.textMutedLight,
     );
@@ -97,12 +78,28 @@ class BullyPalette {
 
 const _radius = 12.0;
 
+class _InstantPageTransitionsBuilder extends PageTransitionsBuilder {
+  const _InstantPageTransitionsBuilder();
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    return child;
+  }
+}
+
 ThemeData buildBullyTheme(Brightness brightness) {
   final dark = brightness == Brightness.dark;
-  final bg = _backgroundsFor(brightness);
-  final bgPrimary = bg.bgPrimary;
-  final bgSecondary = bg.bgSecondary;
-  final bgTertiary = bg.bgTertiary;
+  final custom = ThemeController.instance.hasCustomBackground;
+  final bgPrimary = custom ? Colors.transparent : (dark ? BullyColors.bgPrimary : BullyColors.bgPrimaryLight);
+  final bgSecondary = custom ? Colors.transparent : (dark ? BullyColors.bgSecondary : BullyColors.bgSecondaryLight);
+  final bgTertiary = custom ? Colors.transparent : (dark ? BullyColors.bgTertiary : BullyColors.bgTertiaryLight);
+  final modalSurface = _modalSurface(brightness);
   final textNormal = dark ? BullyColors.textNormal : BullyColors.textNormalLight;
   final textMuted = dark ? BullyColors.textMuted : BullyColors.textMutedLight;
 
@@ -110,10 +107,22 @@ ThemeData buildBullyTheme(Brightness brightness) {
     useMaterial3: true,
     brightness: brightness,
     scaffoldBackgroundColor: bgPrimary,
+    // Transparent Scaffolds mid-slide-transition show the outgoing screen
+    // bleeding through at the wrong position — killing the animation when a
+    // custom background is active avoids that double-exposure artifact.
+    pageTransitionsTheme: custom
+        ? const PageTransitionsTheme(builders: {
+            TargetPlatform.android: _InstantPageTransitionsBuilder(),
+            TargetPlatform.iOS: _InstantPageTransitionsBuilder(),
+            TargetPlatform.macOS: _InstantPageTransitionsBuilder(),
+            TargetPlatform.windows: _InstantPageTransitionsBuilder(),
+            TargetPlatform.linux: _InstantPageTransitionsBuilder(),
+          })
+        : const PageTransitionsTheme(),
     colorScheme: ColorScheme.fromSeed(
       seedColor: BullyColors.blurple,
       brightness: brightness,
-      surface: bgSecondary,
+      surface: modalSurface,
       primary: BullyColors.blurple,
     ),
     fontFamily: 'Roboto',
@@ -133,12 +142,12 @@ ThemeData buildBullyTheme(Brightness brightness) {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(_radius)),
     ),
     dialogTheme: DialogThemeData(
-      backgroundColor: bgSecondary,
+      backgroundColor: modalSurface,
       surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(_radius)),
     ),
     popupMenuTheme: PopupMenuThemeData(
-      color: bgSecondary,
+      color: modalSurface,
       surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(_radius)),
     ),
